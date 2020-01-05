@@ -2997,6 +2997,10 @@ function sys_read(mips, fd, buf, count) {
     // Read into an internal buffer
     var rbuf = new Uint8Array(count);
     var ret = stream.stream_ops.read(stream, rbuf, 0, count, fd.position);
+    if (ret === null) {
+        // Block (FIXME: nonblocking)
+        return null;
+    }
     fd.position += ret;
 
     // Then convert to JSMIPS memory

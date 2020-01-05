@@ -17,17 +17,20 @@ JSMIPS = (function(JSMIPS) {
         // Terminal reader
         term.onKey(function(e) {
             var printable = !e.domEvent.altKey && !e.domEvent.altGraphKey && !e.domEvent.ctrlKey && !e.domEvent.metaKey;
-            console.error(String.fromCharCode(e.domEvent.keyCode));
             if (printable)
                 term.write(e.key);
-            if (e.domEvent.keyCode === 13)
+
+            if (curReader)
+                curReader.buf.push(e.key.charCodeAt(0));
+
+            if (e.domEvent.keyCode === 13) {
                 term.write("\n");
 
-            if (curReader) {
-                curReader.buf.push(e.domEvent.keyCode);
+                // Line-buffered output
                 if (curReaderBlocked)
                     curReaderBlocked.unblock();
             }
+
         });
 
         // Device operations for this terminal

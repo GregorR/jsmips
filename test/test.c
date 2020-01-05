@@ -11,20 +11,20 @@ int main()
     printf("Hello, world!\n");
 
     fd = open("/foo", O_WRONLY);
-    printf("%d\n", write(fd, "Hello, world!\n", 14));
+    printf("Wrote %d to /foo\n", write(fd, "Hello, world!\n", 14));
     close(fd);
 
     fd = open("/foo", O_RDONLY);
     rd = read(fd, buf, 1023);
     buf[rd] = 0;
-    printf("%d\n%s\n", rd, buf);
+    printf("Read %d from /foo:\n%s\n", rd, buf);
     close(fd);
 
     printf("# ");
     fflush(stdout);
-    buf[1023] = 0;
-    fgets(buf, 1023, stdin);
-    printf("%s\n", buf);
+    rd = read(0, buf, 1023);
+    buf[rd] = 0;
+    printf("Read %u from stdin:\n%s\n", rd, buf);
 
     return 0;
 }

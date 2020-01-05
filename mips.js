@@ -216,8 +216,10 @@ JSMIPS = (function(JSMIPS) {
                         this.block();
                         this.pc = opc;
                         this.npc = opc + 4;
-                    } else
+                    } else {
                         this.regs[2] = a;
+                        this.regs[7] = 0;
+                    }
 
                 }
                 break;
