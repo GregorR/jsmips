@@ -3009,12 +3009,6 @@ JSMIPS.syscalls[4003] = sys_read;
 
 // write(4004)
 function sys_write(mips, fd, buf, count) {
-    if (fd >= 1 && fd <= 2) {
-        // Temporary workaround
-        console.log(mips.mem.getstrn(buf, count));
-        return count;
-    }
-
     if (!mips.fds[fd])
         return -JSMIPS.EBADF;
     fd = mips.fds[fd];
@@ -3033,14 +3027,14 @@ function sys_write(mips, fd, buf, count) {
 JSMIPS.syscalls[4004] = sys_write;
 
 // open(4005)
-function sys_open(mips, pathname, flags, mode) {
+JSMIPS.MIPS.prototype.open = function(pathname, flags, mode) {
     var ps = FS.flagsToPermissionString(flags);
-    var stream = FS.open(mips.mem.getstr(pathname), ps, mode);
+    var stream = FS.open(pathname, ps, mode);
 
     // Find an open fd
     var ret = -1;
-    for (var i = 0; i < mips.fds.length; i++) {
-        if (!mips.fds[i]) {
+    for (var i = 0; i < this.fds.length; i++) {
+        if (!this.fds[i]) {
             ret = i;
             break;
         }
@@ -3048,12 +3042,16 @@ function sys_open(mips, pathname, flags, mode) {
 
     // Or choose the next one in line
     if (ret < 0) {
-        ret = mips.fds.length;
-        mips.fds.push(null);
+        ret = this.fds.length;
+        this.fds.push(null);
     }
 
-    mips.fds[ret] = {stream: stream, position: stream.position};
+    this.fds[ret] = {stream: stream, position: stream.position};
     return ret;
+}
+
+function sys_open(mips, pathname, flags, mode) {
+    return mips.open(mips.mem.getstr(pathname), flags, mode);
 }
 JSMIPS.syscalls[4005] = sys_open;
 

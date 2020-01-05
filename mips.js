@@ -210,7 +210,14 @@ JSMIPS = (function(JSMIPS) {
                     this.stop();
 
                 } else {
-                    this.regs[2] = syscalls[callnum](this, a, b, c);
+                    a = syscalls[callnum](this, a, b, c);
+                    if (a === null) {
+                        // Special return meaning "block and try again"
+                        this.block();
+                        this.pc = opc;
+                        this.npc = opc + 4;
+                    } else
+                        this.regs[2] = a;
 
                 }
                 break;
