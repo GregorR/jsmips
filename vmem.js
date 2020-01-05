@@ -116,7 +116,7 @@ JSMIPS = (function(JSMIPS) {
         var loc = this.translaterw(addr);
         var sloc = addr & 0x03;
         var mask = 0xFF000000 >>> (sloc<<3);
-        var dat = loc[0][loc[1]];
+        var dat = loc[0].buf[loc[1]];
         dat = (dat & (~mask)) | ((val & 0xFF) << ((3-sloc)<<3));
         loc[0].buf[loc[1]] = dat;
     }

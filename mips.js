@@ -201,9 +201,9 @@ JSMIPS = (function(JSMIPS) {
             {
                 /* Arguments in $4-$7 */
                 var callnum = this.regs[2];
-                var a = JSMIPS.signed(this.regs[4]);
-                var b = JSMIPS.signed(this.regs[5]);
-                var c = JSMIPS.signed(this.regs[6]);
+                var a = this.regs[4];
+                var b = this.regs[5];
+                var c = this.regs[6];
 
                 if (!(callnum in syscalls)) {
                     mipsDebugOut("Unsupported syscall " + callnum + " at " + opc.toString(16) + "\n");
@@ -1265,8 +1265,10 @@ JSMIPS = (function(JSMIPS) {
     */
 
 
-    // various stuff
+    // System calls and related
     var PATH_MAX = 255;
+    var EBADF = JSMIPS.EBADF = 9;
+    var ENOTSUP = JSMIPS.ENOTSUP = 122;
 
 
     // exit(1), exit_group(4246)

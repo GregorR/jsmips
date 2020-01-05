@@ -1,0 +1,1 @@
+JSMIPS = (function(JSMIPS) {
