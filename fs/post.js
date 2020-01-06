@@ -33,6 +33,13 @@ JSMIPS.mipsfork.push(function(mips, nmips) {
     });
 });
 
+// Convert emscripten FS errors to errnos
+function fsErr(err) {
+    if (typeof err === "object" && "errno" in err)
+        return -err.errno;
+    return -JSMIPS.ENOTSUP;
+}
+
 
 // syscalls
 
@@ -188,7 +195,12 @@ JSMIPS.MIPS.prototype.open = function(pathname, flags, mode) {
         pathname = this.cwd + "/" + pathname;
 
     var ps = FS.flagsToPermissionString(flags).replace("rw", "r+");
-    var stream = FS.open(pathname, ps, mode);
+    var stream;
+    try {
+        stream = FS.open(pathname, ps, mode);
+    } catch (err) {
+        return fsErr(err);
+    }
 
     // Find an open fd
     var ret = -1;
