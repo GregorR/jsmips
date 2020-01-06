@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -25,6 +26,12 @@ int main()
     rd = read(0, buf, 1023);
     buf[rd] = 0;
     printf("Read %u from stdin:\n%s\n", rd, buf);
+
+    for (rd = 0; rd < 100; rd++) {
+        printf("%d\n", rd);
+        if (malloc(1024) == NULL)
+            break;
+    }
 
     return 0;
 }
