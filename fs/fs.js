@@ -2973,6 +2973,9 @@ JSMIPS.FS = FS;
 JSMIPS.mipsinit.push(function(mips) {
     // Start with empty fd table
     mips.fds = [];
+
+    // And / as CWD
+    mips.cwd = "/";
 });
 
 JSMIPS.mipsfork.push(function(mips, nmips) {
@@ -2994,6 +2997,9 @@ JSMIPS.mipsfork.push(function(mips, nmips) {
 JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
     if (typeof args === "undefined") args = [filename];
     if (typeof envs === "undefined") envs = [];
+
+    // The only AUX we currently support is PAGESZ
+    var AT_PAGESZ = 6;
 
     var file;
     if (typeof filename === "string") {
@@ -3024,7 +3030,6 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
     this.loadELF(file);
 
     // Load out args and envs
-    var argc = args.length;
     var topaddr = 0xFFFFFFFC;
     var i;
     for (i = 0; i < args.length; i++) {
@@ -3039,25 +3044,30 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
         this.mem.setstr(topaddr, env);
         envs[i] = topaddr;
     }
-    topaddr -= 4;
+
+    // Put the aux on the stack
+    topaddr = 0xC0000000 - 4;
     this.mem.set(topaddr, 0);
-    for (i = args.length - 1; i >= 0; i--) {
-        topaddr -= 4;
-        this.mem.set(topaddr, args[i]);
-    }
-    args = topaddr;
+    topaddr -= 8;
+    this.mem.set(topaddr, AT_PAGESZ);
+    this.mem.set(topaddr+4, 4096);
+
+    // And put the references to them on the stack
     topaddr -= 4;
     this.mem.set(topaddr, 0);
     for (i = envs.length - 1; i >= 0; i--) {
         topaddr -= 4;
         this.mem.set(topaddr, args[i]);
     }
-    envs = topaddr;
-
-    // and put them into the stack proper
-    this.mem.set(0xBFFFFFF4, argc);
-    this.mem.set(0xBFFFFFF8, args);
-    this.mem.set(0xBFFFFFFC, envs);
+    topaddr -= 4;
+    this.mem.set(topaddr, 0);
+    for (i = args.length - 1; i >= 0; i--) {
+        topaddr -= 4;
+        this.mem.set(topaddr, args[i]);
+    }
+    topaddr -= 4;
+    this.mem.set(topaddr, args.length);
+    this.regs[29] = topaddr;
 
     return 0;
 }
@@ -3131,7 +3141,10 @@ JSMIPS.syscalls[4004] = sys_write;
 
 // open(4005)
 JSMIPS.MIPS.prototype.open = function(pathname, flags, mode) {
-    var ps = FS.flagsToPermissionString(flags);
+    if (pathname.length && pathname[0] !== "/")
+        pathname = this.cwd + "/" + pathname;
+
+    var ps = FS.flagsToPermissionString(flags).replace("rw", "r+");
     var stream = FS.open(pathname, ps, mode);
 
     // Find an open fd
@@ -3165,12 +3178,46 @@ function sys_close(mips, fd) {
 
     var stream = mips.fds[fd].stream;
     if (stream.stream_ops.close)
-        stream.stream_ops.close();
+        stream.stream_ops.close(stream);
 
     mips.fds[fd] = null;
     return 0;
 }
 JSMIPS.syscalls[4006] = sys_close;
+
+// dup2(4063)
+function sys_dup2(mips, fd1, fd2) {
+    if (!mips.fds[fd1])
+        return -JSMIPS.EBADF;
+
+    // emscripten's FS module doesn't support this at all...
+    fd1 = mips.fds[fd1];
+    var ret = mips.open(fd1.stream.path, FS.flagsToPermissionString(fd1.stream.flags));
+    if (ret < 0) return ret;
+
+    // Put it where it belongs
+    if (mips.fds[fd2])
+        sys_close(mips, fd2);
+    var retFd = mips.fds[ret];
+    retFd.position = fd1.position;
+    if (ret !== fd2) {
+        while (mips.fds.length <= fd2)
+            mips.fds.push(null);
+        mips.fds[fd2] = retFd;
+        mips.fds[ret] = null;
+    }
+    return fd2;
+}
+JSMIPS.syscalls[4063] = sys_dup2;
+
+// getcwd(4203)
+function sys_getcwd(mips, buf, size) {
+    if (mips.cwd.length + 1 > size)
+        return -JSMIPS.ERANGE;
+    mips.mem.setstr(buf, mips.cwd);
+    return buf;
+}
+JSMIPS.syscalls[4203] = sys_getcwd;
 
 return JSMIPS;
 })(typeof JSMIPS === "undefined" ? {} : JSMIPS);

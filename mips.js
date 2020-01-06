@@ -234,6 +234,11 @@ JSMIPS = (function(JSMIPS) {
                 break;
             }
 
+            case 0x0F: // ????
+            {
+                break;
+            }
+
             case 0x10: // mfhi rd
             {
                 this.regs[rd] = this.rhi;
@@ -606,7 +611,9 @@ JSMIPS = (function(JSMIPS) {
                 break;
             }
 
+            case 0x30: // lwc0
             case 0x31: // lwc1
+            case 0x38: // swc0
             case 0x39: // swc1
             {
                 // no coproc
@@ -1279,6 +1286,8 @@ JSMIPS = (function(JSMIPS) {
     // System calls and related
     var PATH_MAX = 255;
     var EBADF = JSMIPS.EBADF = 9;
+    var EINVAL = JSMIPS.EINVAL = 22;
+    var ERANGE = JSMIPS.ERANGE = 34;
     var ENOTSUP = JSMIPS.ENOTSUP = 122;
 
 
@@ -1324,29 +1333,11 @@ JSMIPS = (function(JSMIPS) {
     }
     syscalls[2] = sys_fork;
 
-    // getpid(20)
-    function sys_getpid(mips) {
-        mips.sysreturn(mips.num);
-    }
-    syscalls[20] = sys_getpid;
-
-    // geteuid (24)
-    function sys_getuid(mips) {
-        mips.sysreturn(0);
-    }
-    syscalls[24] = sys_getuid;
-
     // geteuid (25)
     function sys_geteuid(mips) {
         mips.sysreturn(0);
     }
     syscalls[25] = sys_geteuid;
-
-    // getppid (39)
-    function sys_getppid(mips) {
-        mips.sysreturn((mips.pproc === null) ? 1 : mips.pproc.num);
-    }
-    syscalls[39] = sys_getppid;
 
     // getegid (43)
     function sys_getegid(mips) {
@@ -1359,15 +1350,6 @@ JSMIPS = (function(JSMIPS) {
         mips.sysreturn(0);
     }
     syscalls[47] = sys_getgid;
-
-    // sbrk(69)
-    function sys_sbrk(mips, incr) {
-        // round off incr to a page barrier
-        incr = ((incr >> 12) + 1) * 4096;
-        mips.dataend += incr;
-        mips.sysreturn(mips.dataend);
-    }
-    syscalls[69] = sys_sbrk;
 
     // gethostname(87)
     function sys_gethostname(mips, nameaddr, len) {
@@ -1429,6 +1411,37 @@ JSMIPS = (function(JSMIPS) {
     }
     syscalls[4004] = sys_write;
 
+    // getpid(4020)
+    function sys_getpid(mips) {
+        return mips.num;
+    }
+    syscalls[4020] = sys_getpid;
+
+    // getuid(4024) and friends
+    function sys_getuid(mips) {
+        return 0;
+    }
+    syscalls[4024] = sys_getuid;
+    syscalls[4132] = sys_getuid; // getpgid
+
+    // sbrk(4045)
+    function sys_sbrk(mips, incr) {
+        // round off incr to a page barrier
+        incr = ((incr+4095) >>> 12) << 12;
+        mips.dataend += incr;
+        return mips.dataend;
+    }
+    syscalls[4045] = sys_sbrk;
+
+    // getppid(4064)
+    function sys_getppid(mips) {
+        if (mips.pproc === null)
+            return 1;
+        else
+            return mips.pproc.num;
+    }
+    syscalls[4064] = sys_getppid;
+
     // writev(4146)
     function sys_writev(mips, fd, iov, iovcnt) {
         // We just do writev in terms of write(4004)
@@ -1459,11 +1472,27 @@ JSMIPS = (function(JSMIPS) {
     }
     syscalls[4146] = sys_writev;
 
+    // mmap2(4210)
+    function sys_mmap2(mips, addr, length, prot) {
+        var flags = mips.regs[7];
+        var fd = mips.regs[8];
+        var pgoffset = mips.regs[9];
+
+        // FIXME: This is not an even remotely correct implementation of mmap!
+        return sys_sbrk(mips, length);
+    }
+    syscalls[4210] = sys_mmap2;
+
     // stubs
-    function sys_stub(mips) {
+    function sys_stub() {
         return 0;
     }
+    syscalls[4037] = sys_stub; // kill (FIXME?)
     syscalls[4054] = sys_stub; // ioctl (unless you load an IO driver)
+    syscalls[4122] = sys_stub; // uname (FIXME)
+    syscalls[4194] = sys_stub; // rt_sigprocmask
+    syscalls[4195] = sys_stub; // rt_sigprocmask
+    syscalls[4220] = sys_stub; // fcntl64 (FIXME)
     syscalls[4252] = sys_stub; // set_tid_address
     syscalls[4283] = sys_stub; // set_thread_area
 
