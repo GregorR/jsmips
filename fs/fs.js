@@ -2987,6 +2987,105 @@ JSMIPS.mipsfork.push(function(mips, nmips) {
     });
 });
 
+
+// syscalls
+
+// execve(11)
+JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
+    if (typeof args === "undefined") args = [filename];
+    if (typeof envs === "undefined") envs = [];
+
+    var file;
+    if (typeof filename === "string") {
+        // Open the file (FIXME: Won't work if blocking is possible)
+        file = FS.readFile(filename, {encoding: "binary"});
+
+        // FIXME: Script support, dynamic ELF, etc
+
+        // Convert to 32-bit for loadELF
+        if (file.length % 4 !== 0) {
+            var file4 = new Uint8Array(file.length + 4 - file.length%4);
+            file4.set(file);
+            file = file4;
+        }
+        var file32 = new Uint32Array(file.length / 4);
+        var filedv = new DataView(file.buffer);
+        for (var i = 0; i < file32.length; i++)
+            file32[i] = filedv.getUint32(i*4);
+        file = file32;
+
+    } else {
+        // You're allowed to include the ELF directly
+        file = filename;
+
+    }
+
+    // Load the ELF
+    this.loadELF(file);
+
+    // Load out args and envs
+    var argc = args.length;
+    var topaddr = 0xFFFFFFFC;
+    var i;
+    for (i = 0; i < args.length; i++) {
+        var arg = args[i];
+        topaddr -= arg.length + 1;
+        this.mem.setstr(topaddr, arg);
+        args[i] = topaddr;
+    }
+    for (i = 0; i < envs.length; i++) {
+        var env = envs[i];
+        topaddr -= env.length + 1;
+        this.mem.setstr(topaddr, env);
+        envs[i] = topaddr;
+    }
+    topaddr -= 4;
+    this.mem.set(topaddr, 0);
+    for (i = args.length - 1; i >= 0; i--) {
+        topaddr -= 4;
+        this.mem.set(topaddr, args[i]);
+    }
+    args = topaddr;
+    topaddr -= 4;
+    this.mem.set(topaddr, 0);
+    for (i = envs.length - 1; i >= 0; i--) {
+        topaddr -= 4;
+        this.mem.set(topaddr, args[i]);
+    }
+    envs = topaddr;
+
+    // and put them into the stack proper
+    this.mem.set(0xBFFFFFF4, argc);
+    this.mem.set(0xBFFFFFF8, args);
+    this.mem.set(0xBFFFFFFC, envs);
+
+    return 0;
+}
+
+function sys_execve(mips, filename, argv, envp) {
+    // Load out the arguments
+    filename = mips.mem.getstr(filename);
+    var args = [], envs = [];
+
+    for (;; argv += 4) {
+        var arg = mips.mem.get(argv);
+        if (arg === 0)
+            break;
+        else
+            args.push(mips.mem.getstr(arg));
+    }
+    for (;; envp += 4) {
+        var env = mips.mem.get(envp);
+        if (env === 0)
+            break;
+        else
+            envs.push(mips.mem.getstr(env));
+    }
+
+    return mips.execve(filename, args, envs);
+}
+JSMIPS.syscalls[11] = sys_execve;
+
 // read(4003)
 function sys_read(mips, fd, buf, count) {
     if (!mips.fds[fd])
