@@ -3222,6 +3222,20 @@ function sys_dup2(mips, fd1, fd2) {
 }
 JSMIPS.syscalls[4063] = sys_dup2;
 
+// poll(4188)
+function sys_poll(mips, fds, nfds, timeout) {
+    // Quick hack workaround
+    if (nfds === 1) {
+        var events = mips.mem.geth(fds + 4);
+        mips.mem.seth(fds + 6, events);
+        return 1;
+    }
+
+    console.error(`poll ${fds} ${nfds} ${timeout}`);
+    return -JSMIPS.ENOTSUP;
+}
+JSMIPS.syscalls[4188] = sys_poll;
+
 // getcwd(4203)
 function sys_getcwd(mips, buf, size) {
     if (mips.cwd.length + 1 > size)

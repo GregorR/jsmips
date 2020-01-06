@@ -9,7 +9,7 @@ JSMIPS = (function(JSMIPS) {
          * memArray = array of pages, top 20 bits (1024*1024 elements)
          *   each subarray = array of words, next 10 bits (1024 elements)
          *     each word = four bytes, last 2 bits */
-        this.memArray = new Array();
+        this.memArray = {};
         this.lastPage = -1;
         this.lastPageMem = null;
     }
@@ -27,7 +27,7 @@ JSMIPS = (function(JSMIPS) {
     VMem.prototype.translatePage = function(page) {
         if (this.lastPage == page) return this.lastPageMem;
     
-        if (typeof(this.memArray[page]) == "undefined")
+        if (!(page in this.memArray))
             this.memArray[page] = this.newPage();
         var pmem = this.memArray[page];
         this.lastPage = page;
@@ -60,6 +60,29 @@ JSMIPS = (function(JSMIPS) {
         }
     
         return [pmem, word];
+    }
+
+    // Find a fresh chunk of memory of the given length (in pages), for mmap
+    VMem.prototype.mmap = function(len) {
+        var start, end;
+        for (start = 0x60000; start < 0x100000; start++) {
+            if (start in this.memArray)
+                continue;
+
+            // This page is free, but is the region?
+            for (end = start + 1; end < start + len; end++) {
+                if (end in this.memArray)
+                    break;
+            }
+            if (end !== start + len)
+                continue;
+
+            // The whole region is free, hooray
+            for (end--; end >= start; end--)
+                this.memArray[end] = this.newPage();
+            return JSMIPS.unsigned(start << 12);
+        }
+        return null;
     }
     
     // Get a word
@@ -110,7 +133,17 @@ JSMIPS = (function(JSMIPS) {
         var loc = this.translaterw(addr);
         loc[0].buf[loc[1]] = val;
     }
-    
+
+    // Set a halfword
+    VMem.prototype.seth = function(addr, val) {
+        var loc = this.translaterw(addr);
+        var sloc = addr & 0x02;
+        var mask = 0xFFFF0000 >>> (sloc<<3);
+        var dat = loc[0].buf[loc[1]];
+        dat = (dat & (~mask)) | ((val & 0xFFFF) << ((2-sloc)<<3));
+        loc[0].buf[loc[1]] = dat;
+    }
+
     // Set a byte
     VMem.prototype.setb = function(addr, val) {
         var loc = this.translaterw(addr);
@@ -120,7 +153,7 @@ JSMIPS = (function(JSMIPS) {
         dat = (dat & (~mask)) | ((val & 0xFF) << ((3-sloc)<<3));
         loc[0].buf[loc[1]] = dat;
     }
-    
+
     // Set a string
     VMem.prototype.setstr = function(addr, val) {
         for (; val.length != 0; val = val.slice(1)) {

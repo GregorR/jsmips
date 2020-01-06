@@ -1290,6 +1290,7 @@ JSMIPS = (function(JSMIPS) {
     // System calls and related
     var PATH_MAX = 255;
     var EBADF = JSMIPS.EBADF = 9;
+    var ENOMEM = JSMIPS.ENOMEM = 12;
     var EINVAL = JSMIPS.EINVAL = 22;
     var ERANGE = JSMIPS.ERANGE = 34;
     var ENOTSUP = JSMIPS.ENOTSUP = 122;
@@ -1478,7 +1479,12 @@ JSMIPS = (function(JSMIPS) {
         var pgoffset = mips.regs[9];
 
         // FIXME: This is not an even remotely correct implementation of mmap!
-        return sys_sbrk(mips, length);
+        length >>>= 12;
+        var ret = mips.mem.mmap(length);
+        if (ret === null)
+            return -ENOMEM;
+
+        return ret;
     }
     syscalls[4210] = sys_mmap2;
 
