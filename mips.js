@@ -1337,12 +1337,6 @@ JSMIPS = (function(JSMIPS) {
     }
     syscalls[2] = sys_fork;
 
-    // geteuid (25)
-    function sys_geteuid(mips) {
-        mips.sysreturn(0);
-    }
-    syscalls[25] = sys_geteuid;
-
     // getegid (43)
     function sys_getegid(mips) {
         mips.sysreturn(0);
@@ -1426,6 +1420,7 @@ JSMIPS = (function(JSMIPS) {
         return 0;
     }
     syscalls[4024] = sys_getuid;
+    syscalls[4049] = sys_getuid; // geteuid
     syscalls[4132] = sys_getuid; // getpgid
 
     // sbrk(4045)
