@@ -3231,7 +3231,6 @@ function sys_poll(mips, fds, nfds, timeout) {
         return 1;
     }
 
-    console.error(`poll ${fds} ${nfds} ${timeout}`);
     return -JSMIPS.ENOTSUP;
 }
 JSMIPS.syscalls[4188] = sys_poll;
