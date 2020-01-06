@@ -211,11 +211,13 @@ JSMIPS = (function(JSMIPS) {
 
                 } else {
                     a = syscalls[callnum](this, a, b, c);
-                    if (a === null) {
-                        // Special return meaning "block and try again"
+                    if (typeof a === "object") {
+                        /* Special return meaning "block and try again". Will
+                         * call a.unblock when it's ready. */
                         this.block();
                         this.pc = opc;
                         this.npc = opc + 4;
+                        a.unblock = this.unblock.bind(this);
                     } else {
                         this.regs[2] = a;
                         this.regs[7] = 0;

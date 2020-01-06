@@ -27,8 +27,10 @@ JSMIPS = (function(JSMIPS) {
                 term.write("\n");
 
                 // Line-buffered output
-                if (curReaderBlocked)
+                if (curReaderBlocked) {
                     curReaderBlocked.unblock();
+                    curReaderBlocked = null;
+                }
             }
 
         });
@@ -48,8 +50,8 @@ JSMIPS = (function(JSMIPS) {
             read: function(stream, buffer, offset, length) {
                 if (stream.buf.length === 0) {
                     // No input, block!
-                    curReaderBlocked = mips;
-                    return null;
+                    curReaderBlocked = {};
+                    return curReaderBlocked;
                 }
 
                 if (length > stream.buf.length)
