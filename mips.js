@@ -658,7 +658,7 @@ JSMIPS = (function(JSMIPS) {
     // jit-ize code, returning a function which runs some jitted code in the current context
     MIPS.prototype.jitize = function(page, baseaddr) {
         var i;
-        var strfunc = "(function(mips) { var res; var bc = 0;";
+        var strfunc = "var res; var bc = 0;";
         var fix = "";
 
         // get a direct reference to the registers
@@ -690,9 +690,9 @@ JSMIPS = (function(JSMIPS) {
 
             strfunc += res;
         }
-        strfunc += "mips.pc = " + jpc + "; mips.npc = " + (jpc+4) + "; return true; default: return false; } } })";
+        strfunc += "mips.pc = " + jpc + "; mips.npc = " + (jpc+4) + "; return true; default: return false; } }";
 
-        return eval(strfunc);
+        return Function("mips", strfunc);
     }
 
     // JIT one instruction
@@ -746,7 +746,7 @@ JSMIPS = (function(JSMIPS) {
 
             case 0x04: // sllv rd,rt,rs
             {
-                return "regs[" + rd + " = regs[" + rt + "] << regs[" + rs + "]; ";
+                return "regs[" + rd + "] = regs[" + rt + "] << regs[" + rs + "]; ";
             }
 
             case 0x06: // srlv rd,rt,rs
@@ -944,13 +944,17 @@ JSMIPS = (function(JSMIPS) {
         switch (opcode) {
             case 0x01:
             {
+                var ret = "";
+                if (rt&0x10) // and link
+                    ret += "regs[31] = " + (opc+4) + "; ";
                 if (rt) { // bgez rs,target
-                    return "if (JSMIPS.signed(regs[" + rs + "]) >= 0) { " + branch() + "} ";
+                    ret += "if (JSMIPS.signed(regs[" + rs + "]) >= 0) { " + branch() + "} ";
 
                 } else { // bltz rs,target
-                    return "if (JSMIPS.signed(regs[" + rs + "]) < 0) { " + branch() + "} ";
+                    ret += "if (JSMIPS.signed(regs[" + rs + "]) < 0) { " + branch() + "} ";
 
                 }
+                return ret;
             }
 
             case 0x04: // beq rs,rt,target
