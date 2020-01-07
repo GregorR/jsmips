@@ -1424,14 +1424,13 @@ JSMIPS = (function(JSMIPS) {
     syscalls[4049] = sys_getuid; // geteuid
     syscalls[4132] = sys_getuid; // getpgid
 
-    // sbrk(4045)
-    function sys_sbrk(mips, incr) {
-        // round off incr to a page barrier
-        incr = ((incr+4095) >>> 12) << 12;
-        mips.dataend += incr;
+    // brk(4045)
+    function sys_brk(mips, nb) {
+        if (nb > mips.dataend)
+            mips.dataend = nb;
         return mips.dataend;
     }
-    syscalls[4045] = sys_sbrk;
+    syscalls[4045] = sys_brk;
 
     // getppid(4064)
     function sys_getppid(mips) {
