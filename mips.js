@@ -1459,6 +1459,14 @@ JSMIPS = (function(JSMIPS) {
     }
     syscalls[4064] = sys_getppid;
 
+    // munmap(4091)
+    function sys_munmap(mips, base, len) {
+        len >>>= 12;
+        mips.mem.munmap(base, len);
+        return 0;
+    }
+    syscalls[4091] = sys_munmap;
+
     // writev(4146)
     function sys_writev(mips, fd, iov, iovcnt) {
         // We just do writev in terms of write(4004)
@@ -1505,12 +1513,22 @@ JSMIPS = (function(JSMIPS) {
     }
     syscalls[4210] = sys_mmap2;
 
+    // clock_gettime(4263)
+    function sys_clock_gettime(mips, clk_id, tp) {
+        // FIXME: Just ignoring the clock ID
+        var tm = new Date().getTime()/1000;
+        mips.mem.set(tp, tm);
+        mips.mem.set(tp+4, (tm*1000000000)%1000000000);
+        return 0;
+    }
+    syscalls[4263] = sys_clock_gettime;
+
     // stubs
     function sys_stub() {
         return 0;
     }
     syscalls[4037] = sys_stub; // kill (FIXME?)
-    syscalls[4114] = sys_exit; // wait4 (FIXME!)
+    syscalls[4114] = function(mips) { mips.block(); return 0; }; // wait4 (FIXME!)
     syscalls[4122] = sys_stub; // uname (FIXME)
     syscalls[4194] = sys_stub; // rt_sigprocmask
     syscalls[4195] = sys_stub; // rt_sigprocmask

@@ -84,6 +84,13 @@ JSMIPS = (function(JSMIPS) {
         }
         return null;
     }
+
+    // Free this many pages
+    VMem.prototype.munmap = function(base, len) {
+        base >>>= 12;
+        for (var i = 0; i < len; i++)
+            delete this.memArray[base+i];
+    }
     
     // Get a word
     VMem.prototype.get = function(addr) {
@@ -126,6 +133,15 @@ JSMIPS = (function(JSMIPS) {
             str += String.fromCharCode(this.getb(addri));
         }
         return str;
+    }
+
+    // Set a double-word
+    VMem.prototype.setd = function(addr, val) {
+        var loc = this.translaterw(addr);
+        var hi = JSMIPS.unsigned(val / 0x100000000);
+        loc[0].buf[loc[1]] = hi;
+        loc = this.translaterw(addr+4);
+        loc[0].buf[loc[1]] = val;
     }
     
     // Set a word

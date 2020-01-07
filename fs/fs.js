@@ -2997,10 +2997,26 @@ function fsErr(err) {
     return -JSMIPS.ENOTSUP;
 }
 
+// When we fork, we need to remember all the fds
+JSMIPS.mipsfork.push(function(mips, nmips) {
+    nmips.fds = [];
+    nmips.cwd = mips.cwd;
+
+    while (nmips.fds.length < mips.fds.length)
+        nmips.fds.push(null);
+
+    for (var fd = 0; fd < mips.fds.length; fd++) {
+        if (!mips.fds[fd]) continue;
+        var nfd = mips.dup(fd);
+        nmips.fds[fd] = mips.fds[nfd];
+        mips.fds[nfd] = null;
+    }
+});
+
 
 // syscalls
 
-// execve(11)
+// execve(4011)
 JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
     if (typeof args === "undefined") args = [filename];
     if (typeof envs === "undefined") envs = [];
@@ -3197,30 +3213,82 @@ function sys_close(mips, fd) {
 }
 JSMIPS.syscalls[4006] = sys_close;
 
-// dup2(4063)
-function sys_dup2(mips, fd1, fd2) {
-    if (!mips.fds[fd1])
+// dup(4041)
+JSMIPS.MIPS.prototype.dup = function(fd) {
+    if (!this.fds[fd])
         return -JSMIPS.EBADF;
+    fd = this.fds[fd];
 
     // emscripten's FS module doesn't support this at all...
-    fd1 = mips.fds[fd1];
-    var ret = mips.open(fd1.stream.path, FS.flagsToPermissionString(fd1.stream.flags));
+    var ret = this.open(fd.stream.path, FS.flagsToPermissionString(fd.stream.flags));
+    if (ret < 0) return ret;
+
+    // Keep the position
+    var retFd = this.fds[ret];
+    retFd.position = fd.position;
+    return ret;
+}
+
+function sys_dup(mips, fd) {
+    return mips.dup(fd);
+}
+JSMIPS.syscalls[4041] = sys_dup;
+
+// dup2(4063)
+function sys_dup2(mips, fd1, fd2) {
+    // Dup it first
+    var ret = mips.dup(fd1);
     if (ret < 0) return ret;
 
     // Put it where it belongs
     if (mips.fds[fd2])
         sys_close(mips, fd2);
-    var retFd = mips.fds[ret];
-    retFd.position = fd1.position;
     if (ret !== fd2) {
         while (mips.fds.length <= fd2)
             mips.fds.push(null);
-        mips.fds[fd2] = retFd;
+        mips.fds[fd2] = mips.fds[ret];
         mips.fds[ret] = null;
     }
     return fd2;
 }
 JSMIPS.syscalls[4063] = sys_dup2;
+
+// symlink(4083)
+function sys_symlink(mips, target, linkpath) {
+    target = mips.mem.getstr(target);
+    linkpath = mips.mem.getstr(linkpath);
+    if (linkpath.length && linkpath[0] !== "/")
+        linkpath = mips.cwd + "/" + linkpath;
+
+    try {
+        FS.symlink(target, linkpath);
+    } catch (err) {
+        return fsErr(err);
+    }
+
+    return 0;
+}
+JSMIPS.syscalls[4083] = sys_symlink;
+
+// readlink(4085)
+function sys_readlink(mips, pathname, buf, bufsiz) {
+    pathname = mips.mem.getstr(pathname);
+    if (pathname.length && pathname[0] !== "/")
+        pathname = mips.cwd + "/" + pathname;
+
+    var target;
+    try {
+        target = FS.readlink(pathname);
+    } catch (err) {
+        return fsErr(err);
+    }
+
+    if (target.length > bufsiz) target = target.slice(0, bufsiz);
+    mips.mem.setstr(buf, target);
+
+    return target.length;
+}
+JSMIPS.syscalls[4085] = sys_readlink;
 
 // poll(4188)
 function sys_poll(mips, fds, nfds, timeout) {
@@ -3249,6 +3317,13 @@ function sys_stat64(mips, pathname, statbuf) {
     pathname = mips.mem.getstr(pathname);
     if (pathname.length && pathname[0] !== "/") pathname = mips.cwd + "/" + pathname;
 
+    var j;
+    try {
+        j = FS.stat(pathname);
+    } catch (err) {
+        return fsErr(err);
+    }
+
     /*
      * struct stat {
      * 	dev_t st_dev;               int64  0
@@ -3260,27 +3335,44 @@ function sys_stat64(mips, pathname, statbuf) {
      * 	gid_t st_gid;               uint32 36
      * 	dev_t st_rdev;              int64  40
      * 	long __st_padding2[2];             48
-     * 	off_t st_size;              int64  50
-     * 	struct timespec st_atim;    int64  58
-     * 	struct timespec st_mtim;    int64  64
-     * 	struct timespec st_ctim;    int64  72
-     * 	blksize_t st_blksize;       int32  80
-     * 	long __st_padding3;                84
-     * 	blkcnt_t st_blocks;         int64  88
+     * 	off_t st_size;              int64  64
+     * 	struct timespec st_atim;    int64  72
+     * 	struct timespec st_mtim;    int64  80
+     * 	struct timespec st_ctim;    int64  88
+     * 	blksize_t st_blksize;       int32  96
+     * 	long __st_padding3;                100
+     * 	blkcnt_t st_blocks;         int64  104
      *  long __st_padding4[14];
      * };
      */
 
-    var jstat;
-    try {
-        jstat = FS.stat(pathname);
-    } catch (err) {
-        console.error(`err ${pathname}`);
-        return fsErr(err);
+    function s(o, v) {
+        mips.mem.set(statbuf + o, v);
     }
+    function sd(o, v) {
+        mips.mem.setd(statbuf + o, v);
+    }
+    sd(0, j.dev);
+    sd(16, j.ino);
+    s(24, j.mode);
+    s(28, j.nlink);
+    s(32, 0); // uid
+    s(36, 0); // gid
+    s(40, j.rdev);
+    sd(64, j.size);
+    var atime = j.atime.getTime()/1000;
+    s(72, atime);
+    s(76, (atime*1000000000)%1000000000);
+    var mtime = j.mtime.getTime()/1000;
+    s(80, mtime);
+    s(84, (mtime*1000000000)%1000000000);
+    var ctime = j.ctime.getTime()/1000;
+    s(88, ctime);
+    s(92, (ctime*1000000000)%1000000000);
+    s(96, j.blksize);
+    sd(104, j.blocks);
 
-    console.error(jstat);
-    return -ENOTSUP;
+    return 0;
 }
 JSMIPS.syscalls[4213] = sys_stat64;
 
