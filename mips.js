@@ -371,7 +371,9 @@ JSMIPS = (function(JSMIPS) {
          * unsigned(simm) > 0x0000FFFF */
         var thismips = this;
 
-        function branch() {
+        function branch(link) {
+            if (link)
+                thismips.regs[31] = link;
             thismips.npc += (simm << 2) - 4;
             if (thismips.debug >= DEBUG_JUMPS)
                 mipsDebugOut("BRANCH " + thismips.npc.toString(16) + "\n");
@@ -380,13 +382,15 @@ JSMIPS = (function(JSMIPS) {
         switch (opcode) {
             case 0x01:
             {
+                var link = false;
                 if (rt&0x10) // and link
-                    this.regs[31] = this.pc + 4;
+                    link = this.pc + 4;
+
                 if (rt&1) { // bgez rs,target
-                    if (JSMIPS.signed(this.regs[rs]) >= 0) branch();
+                    if (JSMIPS.signed(this.regs[rs]) >= 0) branch(link);
 
                 } else { // bltz rs,target
-                    if (JSMIPS.signed(this.regs[rs]) < 0) branch();
+                    if (JSMIPS.signed(this.regs[rs]) < 0) branch(link);
 
                 }
                 break;
@@ -926,7 +930,7 @@ JSMIPS = (function(JSMIPS) {
         }
         var thismips = this;
 
-        function branch() {
+        function branch(link) {
             // do the next, then set pc and see what happens
             var res = thismips.jitone(opc+4);
             var trg = (opc + (simm << 2) + 4);
@@ -935,26 +939,27 @@ JSMIPS = (function(JSMIPS) {
                 // whoops, can't handle this case
                 res = "mips.pc = " + (opc+4) + "; mips.npc = " + trg + "; return false; ";
             } else {
-                res += "mips.pc = " + trg + "; mips.npc = " + (trg + 4) + "; if ((++bc) > 100) return true; else break; ";
+                res = (link||"") + res + "mips.pc = " + trg + "; mips.npc = " + (trg + 4) + "; if ((++bc) > 100) return true; else break; ";
             }
             return res;
         }
 
+        if (opcode < 0x00) return false;
 
         switch (opcode) {
             case 0x01:
             {
-                var ret = "";
+                var link = false;
                 if (rt&0x10) // and link
-                    ret += "regs[31] = " + (opc+4) + "; ";
-                if (rt) { // bgez rs,target
-                    ret += "if (JSMIPS.signed(regs[" + rs + "]) >= 0) { " + branch() + "} ";
+                    link = "regs[31] = " + (opc+8) + "; ";
+
+                if (rt&1) { // bgez rs,target
+                    return "if (JSMIPS.signed(regs[" + rs + "]) >= 0) { " + branch(link) + "} ";
 
                 } else { // bltz rs,target
-                    ret += "if (JSMIPS.signed(regs[" + rs + "]) < 0) { " + branch() + "} ";
+                    return "if (JSMIPS.signed(regs[" + rs + "]) < 0) { " + branch(link) + "} ";
 
                 }
-                return ret;
             }
 
             case 0x04: // beq rs,rt,target
