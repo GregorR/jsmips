@@ -1253,6 +1253,9 @@ JSMIPS = (function(JSMIPS) {
     // all syscalls
     var syscalls = JSMIPS.syscalls = {};
 
+    // and ioctls
+    var ioctls = JSMIPS.ioctls = {};
+
     // initialization functions
     var mipsinit = JSMIPS.mipsinit = [];
 
@@ -1432,6 +1435,14 @@ JSMIPS = (function(JSMIPS) {
     }
     syscalls[4045] = sys_brk;
 
+    // ioctl(4054)
+    function sys_ioctl(mips, request, a, b) {
+        if (request in ioctls)
+            return ioctls[request](mips, request, a, b);
+        return -ENOTSUP;
+    }
+    syscalls[4054] = sys_ioctl;
+
     // getppid(4064)
     function sys_getppid(mips) {
         if (mips.pproc === null)
@@ -1492,7 +1503,6 @@ JSMIPS = (function(JSMIPS) {
         return 0;
     }
     syscalls[4037] = sys_stub; // kill (FIXME?)
-    syscalls[4054] = sys_stub; // ioctl (unless you load an IO driver)
     syscalls[4122] = sys_stub; // uname (FIXME)
     syscalls[4194] = sys_stub; // rt_sigprocmask
     syscalls[4195] = sys_stub; // rt_sigprocmask
