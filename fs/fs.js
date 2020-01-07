@@ -3227,7 +3227,7 @@ function sys_poll(mips, fds, nfds, timeout) {
     // Quick hack workaround
     if (nfds === 1) {
         var events = mips.mem.geth(fds + 4);
-        mips.mem.seth(fds + 6, events);
+        mips.mem.seth(fds + 6, events&0x5);
         return 1;
     }
 
