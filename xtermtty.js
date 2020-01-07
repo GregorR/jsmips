@@ -30,8 +30,9 @@ JSMIPS = (function(JSMIPS) {
 
                 // Line-buffered output
                 if (curReaderBlocked) {
-                    curReaderBlocked.unblock();
+                    var b = curReaderBlocked;
                     curReaderBlocked = null;
+                    b.unblock();
                 }
             }
 
