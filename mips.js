@@ -30,10 +30,12 @@ JSMIPS = (function(JSMIPS) {
         this.running = false;
         this.debug = 0;
 
+        // Event handlers
+        this.onstop = [];
+
         // Any other initialization functions
-        for (var i = 0; i < mipsinit.length; i++) {
+        for (var i = 0; i < mipsinit.length; i++)
             mipsinit[i](this);
-        }
     }
 
     // Run the MIPS machine
@@ -1131,11 +1133,14 @@ JSMIPS = (function(JSMIPS) {
     MIPS.prototype.stop = function() {
         this.stopped = true;
 
-        // run the stop functions
+        // Run the stop functions
         var i;
-        for (i = 0; i < mipsstop.length; i++) {
+        for (i = 0; i < mipsstop.length; i++)
             mipsstop[i](this);
-        }
+
+        // And event handlers
+        for (i = 0; i < this.onstop.length; i++)
+            this.onstop[i](this);
     }
 
     // block the machine

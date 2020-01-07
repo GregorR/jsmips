@@ -15,7 +15,7 @@ JSMIPS = (function(JSMIPS) {
         }
 
         // Terminal reader
-        term.onKey(function(e) {
+        var ok = term.onKey(function(e) {
             var printable = !e.domEvent.altKey && !e.domEvent.altGraphKey && !e.domEvent.ctrlKey && !e.domEvent.metaKey;
             if (printable)
                 term.write(e.key);
@@ -93,6 +93,12 @@ JSMIPS = (function(JSMIPS) {
         this.open(tty, 0, 0);
         this.open(tty, 1, 0);
         this.open(tty, 1, 0);
+
+        // Clean up when we're done
+        this.onstop.push(function(mips) {
+            ok.dispose();
+            FS.unlink(tty);
+        });
     };
 
     return JSMIPS;
