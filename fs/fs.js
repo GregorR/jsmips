@@ -3101,7 +3101,7 @@ function sys_execve(mips, filename, argv, envp) {
 
     return mips.execve(filename, args, envs);
 }
-JSMIPS.syscalls[11] = sys_execve;
+JSMIPS.syscalls[4011] = sys_execve;
 
 // read(4003)
 function sys_read(mips, fd, buf, count) {
@@ -3243,6 +3243,46 @@ function sys_getcwd(mips, buf, size) {
     return buf;
 }
 JSMIPS.syscalls[4203] = sys_getcwd;
+
+// stat64(4213)
+function sys_stat64(mips, pathname, statbuf) {
+    pathname = mips.mem.getstr(pathname);
+    if (pathname.length && pathname[0] !== "/") pathname = mips.cwd + "/" + pathname;
+
+    /*
+     * struct stat {
+     * 	dev_t st_dev;               int64  0
+     * 	long __st_padding1[2];             8
+     * 	ino_t st_ino;               int64  16
+     * 	mode_t st_mode;             uint32 24
+     * 	nlink_t st_nlink;           uint32 28
+     * 	uid_t st_uid;               uint32 32
+     * 	gid_t st_gid;               uint32 36
+     * 	dev_t st_rdev;              int64  40
+     * 	long __st_padding2[2];             48
+     * 	off_t st_size;              int64  50
+     * 	struct timespec st_atim;    int64  58
+     * 	struct timespec st_mtim;    int64  64
+     * 	struct timespec st_ctim;    int64  72
+     * 	blksize_t st_blksize;       int32  80
+     * 	long __st_padding3;                84
+     * 	blkcnt_t st_blocks;         int64  88
+     *  long __st_padding4[14];
+     * };
+     */
+
+    var jstat;
+    try {
+        jstat = FS.stat(pathname);
+    } catch (err) {
+        console.error(`err ${pathname}`);
+        return fsErr(err);
+    }
+
+    console.error(jstat);
+    return -ENOTSUP;
+}
+JSMIPS.syscalls[4213] = sys_stat64;
 
 return JSMIPS;
 })(typeof JSMIPS === "undefined" ? {} : JSMIPS);

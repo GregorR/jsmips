@@ -1308,39 +1308,6 @@ JSMIPS = (function(JSMIPS) {
     syscalls[4246] = sys_exit;
 
 /*  Original versions, mostly to be integrated as appropriate.
-    // fork(2)
-    function sys_fork(mips) {
-        var nmips = new MIPS();
-
-        // the parent of that process is this process
-        nmips.pproc = mips;
-
-        // copy in the registers etc
-        // Registers ...
-        nmips.regs = mips.regs.slice(0);
-        nmips.rhi = mips.rhi;
-        nmips.rlo = mips.rlo;
-        nmips.pc = mips.pc;
-        nmips.npc = mips.npc;
-
-        // And memory
-        nmips.mem = mips.mem.fork();
-
-        // The current end of the data segment
-        nmips.dataend = mips.dataend;
-
-        // Any other initialization functions
-        for (var i = 0; i < mipsfork.length; i++) {
-            mipsfork[i](mips, nmips);
-        }
-
-        mips.sysreturn(nmips.num);
-        nmips.sysreturn(0);
-
-        nmips.run();
-    }
-    syscalls[2] = sys_fork;
-
     // getegid (43)
     function sys_getegid(mips) {
         mips.sysreturn(0);
@@ -1404,6 +1371,40 @@ JSMIPS = (function(JSMIPS) {
     syscalls[65540] = sys_sysconf;
 */
 
+    // fork(4002)
+    function sys_fork(mips) {
+        var nmips = new MIPS();
+
+        // the parent of that process is this process
+        nmips.pproc = mips;
+
+        // Copy in the registers
+        nmips.regs = mips.regs.slice(0);
+        nmips.rhi = mips.rhi;
+        nmips.rlo = mips.rlo;
+        nmips.pc = mips.pc;
+        nmips.npc = mips.npc;
+
+        // And memory
+        nmips.mem = mips.mem.fork();
+
+        // The current end of the data segment
+        nmips.dataend = mips.dataend;
+
+        // Any other initialization functions
+        for (var i = 0; i < mipsfork.length; i++)
+            mipsfork[i](mips, nmips);
+
+        // Return into the new MIPS instance
+        nmips.regs[2] = 0;
+        nmips.regs[7] = 0;
+        nmips.run();
+
+        // And into the old one
+        return nmips.num;
+    }
+    syscalls[4002] = sys_fork;
+
     // write(4004) (Trivial implementation to be replaced)
     function sys_write(mips, fd, buf, count) {
         if (fd < 1 || fd > 2)
@@ -1418,6 +1419,7 @@ JSMIPS = (function(JSMIPS) {
         return mips.num;
     }
     syscalls[4020] = sys_getpid;
+    syscalls[4222] = sys_getpid; // gettid
 
     // getuid(4024) and friends
     function sys_getuid(mips) {
@@ -1503,6 +1505,7 @@ JSMIPS = (function(JSMIPS) {
         return 0;
     }
     syscalls[4037] = sys_stub; // kill (FIXME?)
+    syscalls[4114] = sys_exit; // wait4 (FIXME!)
     syscalls[4122] = sys_stub; // uname (FIXME)
     syscalls[4194] = sys_stub; // rt_sigprocmask
     syscalls[4195] = sys_stub; // rt_sigprocmask
