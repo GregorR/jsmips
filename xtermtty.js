@@ -20,8 +20,10 @@ JSMIPS = (function(JSMIPS) {
             if (printable)
                 term.write(e.key);
 
-            if (curReader)
-                curReader.buf.push(e.key.charCodeAt(0));
+            if (curReader) {
+                if (e.domEvent.keyCode === 13) curReader.buf.push(10);
+                else curReader.buf.push(e.key.charCodeAt(0));
+            }
 
             if (e.domEvent.keyCode === 13) {
                 term.write("\n");
