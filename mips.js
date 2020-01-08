@@ -320,7 +320,7 @@ var JSMIPS = (function(JSMIPS) {
 
             case 0x1A: // div rs,rt
             {
-                var srs = JSMIPS.signed(this.regs[rs]), srt = JSMIPS.signed(this.regs[rt]);
+                var srs = (this.regs[rs])>>0, rt = (this.regs[rt])>>0;
                 this.rlo = Math.floor(srs/srt);
                 this.rhi = srs % srt;
                 break;
@@ -373,7 +373,7 @@ var JSMIPS = (function(JSMIPS) {
 
             case 0x2A: // slt rd,rs,rt
             {
-                if (JSMIPS.signed(this.regs[rs]) < JSMIPS.signed(this.regs[rt])) {
+                if ((this.regs[rs])>>0 < (this.regs[rt])>>0) {
                     this.regs[rd] = 1;
                 } else {
                     this.regs[rd] = 0;
@@ -437,10 +437,10 @@ var JSMIPS = (function(JSMIPS) {
                     link = this.pc + 4;
 
                 if (rt&1) { // bgez rs,target
-                    if (JSMIPS.signed(this.regs[rs]) >= 0) branch(link);
+                    if ((this.regs[rs])>>0 >= 0) branch(link);
 
                 } else { // bltz rs,target
-                    if (JSMIPS.signed(this.regs[rs]) < 0) branch(link);
+                    if ((this.regs[rs])>>0 < 0) branch(link);
 
                 }
                 break;
@@ -462,14 +462,14 @@ var JSMIPS = (function(JSMIPS) {
 
             case 0x06: // blez rs,target
             {
-                if (JSMIPS.signed(this.regs[rs]) <= 0)
+                if ((this.regs[rs])>>0 <= 0)
                     branch();
                 break;
             }
 
             case 0x07: // bgtz rs,target
             {
-                if (JSMIPS.signed(this.regs[rs]) > 0)
+                if ((this.regs[rs])>>0 > 0)
                     branch();
                 break;
             }
@@ -477,13 +477,13 @@ var JSMIPS = (function(JSMIPS) {
             case 0x08: // addi rt,rs,imm
             case 0x09: // addiu rt,rs,imm
             {
-                this.regs[rt] = this.regs[rs] + JSMIPS.unsigned(simm);
+                this.regs[rt] = this.regs[rs] + simm>>>0;
                 break;
             }
 
             case 0x0A: // slti rt,rs,imm
             {
-                if (JSMIPS.signed(this.regs[rs]) < simm) {
+                if ((this.regs[rs])>>0 < simm) {
                     this.regs[rt] = 1;
                 } else {
                     this.regs[rt] = 0;
@@ -493,7 +493,7 @@ var JSMIPS = (function(JSMIPS) {
 
             case 0x0B: // sltiu rt,rs,imm
             {
-                if (this.regs[rs] < JSMIPS.unsigned(simm)) {
+                if (this.regs[rs] < simm>>>0) {
                     this.regs[rt] = 1;
                 } else {
                     this.regs[rt] = 0;
@@ -901,8 +901,8 @@ var JSMIPS = (function(JSMIPS) {
 
             case 0x1A: // div rs,rt
             {
-                return "mips.rlo = Math.floor(JSMIPS.signed(regs[" + rs + "])/JSMIPS.signed(regs[" + rt + "])); " +
-                    "mips.rhi = JSMIPS.signed(regs[" + rs + "]) % JSMIPS.signed(regs[" + rt + "]); ";
+                return "mips.rlo = Math.floor((regs[" + rs + "]>>0)/(regs[" + rt + "]>>0)); " +
+                    "mips.rhi = (regs[" + rs + "]>>0) % (regs[" + rt + "]>>0); ";
             }
 
             case 0x1B: // divu rs,rt
@@ -946,7 +946,7 @@ var JSMIPS = (function(JSMIPS) {
 
             case 0x2A: // slt rd,rs,rt
             {
-                return "if (JSMIPS.signed(regs[" + rs + "]) < JSMIPS.signed(regs[" + rt + "])) { " +
+                return "if ((regs[" + rs + "]>>0) < (regs[" + rt + "]>>0)) { " +
                     "regs[" + rd + "] = 1; " +
                 "} else { " +
                     "regs[" + rd + "] = 0; " +
@@ -1046,10 +1046,10 @@ var JSMIPS = (function(JSMIPS) {
                     link = "regs[31] = " + (opc+8) + "; ";
 
                 if (rt&1) { // bgez rs,target
-                    return "if (JSMIPS.signed(regs[" + rs + "]) >= 0) { " + branch(link) + "} ";
+                    return "if ((regs[" + rs + "]>>0) >= 0) { " + branch(link) + "} ";
 
                 } else { // bltz rs,target
-                    return "if (JSMIPS.signed(regs[" + rs + "]) < 0) { " + branch(link) + "} ";
+                    return "if ((regs[" + rs + "]>>0) < 0) { " + branch(link) + "} ";
 
                 }
             }
@@ -1068,13 +1068,13 @@ var JSMIPS = (function(JSMIPS) {
 
             case 0x06: // blez rs,target
             {
-                return "if (JSMIPS.signed(regs[" + rs + "]) <= 0) { " +
+                return "if ((regs[" + rs + "]>>0) <= 0) { " +
                     branch() + "} ";
             }
 
             case 0x07: // bgtz rs,target
             {
-                return "if (JSMIPS.signed(regs[" + rs + "]) > 0) { " +
+                return "if ((regs[" + rs + "]>>0) > 0) { " +
                     branch() + "} ";
                 break;
             }
@@ -1082,12 +1082,12 @@ var JSMIPS = (function(JSMIPS) {
             case 0x08: // addi rt,rs,imm
             case 0x09: // addiu rt,rs,imm
             {
-                return "regs[" + rt + "] = regs[" + rs + "] + " + JSMIPS.unsigned(simm) + "; ";
+                return "regs[" + rt + "] = regs[" + rs + "] + " + (simm>>>0) + "; ";
             }
 
             case 0x0A: // slti rt,rs,imm
             {
-                return "if (JSMIPS.signed(regs[" + rs + "]) < " + simm + ") { " +
+                return "if ((regs[" + rs + "]>>0) < " + simm + ") { " +
                     "regs[" + rt + "] = 1; " +
                 "} else { " +
                     "regs[" + rt + "] = 0; " +
@@ -1096,7 +1096,7 @@ var JSMIPS = (function(JSMIPS) {
 
             case 0x0B: // sltiu rt,rs,imm
             {
-                return "if (regs[" + rs + "] < " + JSMIPS.unsigned(simm) + ") { " +
+                return "if (regs[" + rs + "] < " + (simm>>>0) + ") { " +
                     "regs[" + rt + "] = 1; " +
                 "} else { " +
                     "regs[" + rt + "] = 0; " +
@@ -1692,7 +1692,7 @@ var JSMIPS = (function(JSMIPS) {
 
     // wait4(4114)
     function sys_wait4(mips, pid, wstatus, options) {
-        pid = JSMIPS.signed(pid);
+        pid = pid>>0;
         var rusage = mips.regs[7];
         var ub = {};
 

@@ -17,18 +17,6 @@
  */
 
 var JSMIPS = (function(JSMIPS) {
-    // view the 32-bit number as unsigned
-    function unsigned(val) {
-        return val >>> 0;
-    }
-    JSMIPS.unsigned = unsigned;
-
-    // view a 32-bit number as signed
-    function signed(val) {
-        return val >> 0;
-    }
-    JSMIPS.signed = signed;
-
     function add32(x, y) {
         var xy = x + y;
         if (xy > 0xFFFFFFFF) xy -= 0x100000000;
@@ -64,8 +52,8 @@ var JSMIPS = (function(JSMIPS) {
          *  cccc
          *   bbbb */
 
-        b = add64(b, [unsigned((c[0] & 0xFFFF) << 16) + ((c[1] & 0xFFFF0000) >>> 16),
-                      unsigned((c[1] & 0xFFFF) << 16)]);
+        b = add64(b, [((c[0] & 0xFFFF) << 16)>>>0 + ((c[1] & 0xFFFF0000) >>> 16),
+                      ((c[1] & 0xFFFF) << 16)>>>0]);
         b = add64(b, [a[1], 0]);
 
         return b;
@@ -94,7 +82,7 @@ var JSMIPS = (function(JSMIPS) {
 
     function neg64(x) {
         return add64(
-                [unsigned(~(x[0])), unsigned(~(x[1]))],
+                [(~(x[0]))>>>0, (~(x[1]))>>>0],
                 [0, 1]);
     }
     JSMIPS.neg64 = neg64;

@@ -94,7 +94,7 @@ var JSMIPS = (function(JSMIPS) {
             // The whole region is free, hooray
             for (end--; end >= start; end--)
                 this.memArray[end] = this.newPage();
-            return JSMIPS.unsigned(start << 12);
+            return (start << 12)>>>0;
         }
         return null;
     }
@@ -152,7 +152,7 @@ var JSMIPS = (function(JSMIPS) {
     // Set a double-word
     VMem.prototype.setd = function(addr, val) {
         var loc = this.translaterw(addr);
-        var hi = JSMIPS.unsigned(val / 0x100000000);
+        var hi = (val / 0x100000000)>>>0;
         loc[0].buf[loc[1]] = hi;
         loc = this.translaterw(addr+4);
         loc[0].buf[loc[1]] = val;
