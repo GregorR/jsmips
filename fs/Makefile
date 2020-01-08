@@ -8,6 +8,7 @@ all: $(TARGET)
 
 $(TARGET): $(SRC)
 	cat $(SRC) > $(TARGET)
+	cat pre.js post.js > $(TARGET)-doc.js
 
 clean:
 	rm -f $(TARGET)

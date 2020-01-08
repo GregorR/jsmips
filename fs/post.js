@@ -27,9 +27,14 @@ var MEMFS = LibraryManager.library.$MEMFS;
 FS.staticInit();
 FS.init();
 
+/**
+ * File system. Lifted from Emscripten, so please see Emscripten's FS docs on
+ * how to use this.
+ * @see {@link https://emscripten.org/docs/api_reference/Filesystem-API.html}
+ */
 JSMIPS.FS = FS;
 
-// Then handle all the related syscalls
+// When we create a fresh MIPS sim, it has no FDs and / as cwd
 JSMIPS.mipsinit.push(function(mips) {
     // Start with empty fd table
     mips.fds = [];
@@ -89,7 +94,15 @@ JSMIPS.mipsstop.push(function(mips) {
 
 // syscalls
 
-// execve(4011)
+/**
+ * execve. Usually to be run by the system call, but also useful for initial
+ * setup of a fresh sim.
+ *
+ * @param {string} filename     Path to the ELF file to load
+ * @param {Array.<string>=} args Arguments
+ * @param {Array.<string>=} envs Environment
+ * @return {int}                0 for success, a negative errno if an error occurred
+ */
 JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
     if (typeof args === "undefined") args = [filename];
     if (typeof envs === "undefined") envs = [];
@@ -168,6 +181,7 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
     return 0;
 }
 
+// execve(4011)
 function sys_execve(mips, filename, argv, envp) {
     // Load out the arguments
     filename = mips.mem.getstr(filename);
@@ -235,7 +249,15 @@ function sys_write(mips, fd, buf, count) {
 }
 JSMIPS.syscalls[JSMIPS.NR_write] = sys_write;
 
-// open(4005)
+/**
+ * open. Almost always to be used by the system call, but sometimes useful for
+ * initial setup, particularly of stdin/stdout/stderr.
+ *
+ * @param {string} pathname     Path to open
+ * @param {int} flags           Open flags
+ * @param {int} mode            Mode with which to create the file, if applicable
+ * @return {int}                A positive file descriptor on success, negative errno on error
+ */
 JSMIPS.MIPS.prototype.open = function(pathname, flags, mode) {
     if (pathname.length && pathname[0] !== "/")
         pathname = this.cwd + "/" + pathname;
@@ -267,6 +289,7 @@ JSMIPS.MIPS.prototype.open = function(pathname, flags, mode) {
     return ret;
 }
 
+// open(4005)
 function sys_open(mips, pathname, flags, mode) {
     return mips.open(mips.mem.getstr(pathname), flags, mode);
 }
@@ -286,7 +309,10 @@ function sys_close(mips, fd) {
 }
 JSMIPS.syscalls[JSMIPS.NR_close] = sys_close;
 
-// dup(4041)
+/**
+ * dup
+ * @private
+ */
 JSMIPS.MIPS.prototype.dup = function(fd) {
     if (!this.fds[fd])
         return -JSMIPS.EBADF;
@@ -302,6 +328,7 @@ JSMIPS.MIPS.prototype.dup = function(fd) {
     return ret;
 }
 
+// dup(4041)
 function sys_dup(mips, fd) {
     return mips.dup(fd);
 }
