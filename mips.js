@@ -410,14 +410,14 @@ JSMIPS = (function(JSMIPS) {
 
             case 0x04: // beq rs,rt,target
             {
-                if (this.regs[rs] == this.regs[rt])
+                if (this.regs[rs] === this.regs[rt])
                     branch();
                 break;
             }
 
             case 0x05: // bne rs,rt,target
             {
-                if (this.regs[rs] != this.regs[rt])
+                if (this.regs[rs] !== this.regs[rt])
                     branch();
                 break;
             }
@@ -792,9 +792,9 @@ JSMIPS = (function(JSMIPS) {
                 var res = this.jitone(opc+4);
 
                 if (res === false) {
-                    res = "mips.pc = " + (opc+4) + "; mips.npc = regs[" + rs + "]; return false; ";
+                    res = "regs[" + rd + "] = " + (opc+8) + "; mips.pc = " + (opc+4) + "; mips.npc = regs[" + rs + "]; return false; ";
                 } else {
-                    res += "regs[" + rd + "] = " + opc + " + 8; mips.pc = regs[" + rs + "]; mips.npc = mips.pc + 4; if ((++bc) > 100) return true; else break; ";
+                    res += "regs[" + rd + "] = " + (opc+8) + "; mips.pc = regs[" + rs + "]; mips.npc = mips.pc + 4; if ((++bc) > 100) return true; else break; ";
                 }
                 return res;
             }
@@ -803,6 +803,11 @@ JSMIPS = (function(JSMIPS) {
             case 0x0D: // break
             {
                 return false;
+            }
+
+            case 0x0F: // ???
+            {
+                return "";
             }
 
             case 0x10: // mfhi rd
@@ -922,6 +927,17 @@ JSMIPS = (function(JSMIPS) {
 
             return res;
 
+        } else if (opcode == 0x03) { // jal target
+            var res = this.jitone(opc+4);
+
+            if (res === false) {
+                res = "regs[31] = " + (opc+8) + "; mips.pc = " + (opc+4) + "; mips.npc = " + target + "; return false; ";
+            } else {
+                res = "regs[31] = " + (opc+8) + "; " + res + " mips.pc = " + target + "; mips.npc = " + (target+4) + "; if ((++bc) > 100) return true; else break;";
+            }
+
+            return res;
+
         } else {
             return false;
 
@@ -949,14 +965,12 @@ JSMIPS = (function(JSMIPS) {
 
             if (res === false) {
                 // whoops, can't handle this case
-                res = "mips.pc = " + (opc+4) + "; mips.npc = " + trg + "; return false; ";
+                res = (link||"") + "mips.pc = " + (opc+4) + "; mips.npc = " + trg + "; return false; ";
             } else {
                 res = (link||"") + res + "mips.pc = " + trg + "; mips.npc = " + (trg + 4) + "; if ((++bc) > 100) return true; else break; ";
             }
             return res;
         }
-
-        if (opcode < 0x00) return false;
 
         switch (opcode) {
             case 0x01:
@@ -1041,6 +1055,12 @@ JSMIPS = (function(JSMIPS) {
             case 0x0F: // lui rt,imm
             {
                 return "regs[" + rt + "] = " + (imm << 16) + "; ";
+            }
+
+            case 0x1F: // secret instruction
+            {
+                // See 0x1F in itype
+                return "regs[3] = 0; ";
             }
 
             case 0x20: // lb rt,imm(rs)
@@ -1129,6 +1149,14 @@ JSMIPS = (function(JSMIPS) {
 
                 code += "mips.mem.set(word, dat);";
                 return code;
+            }
+
+            case 0x30: // lwc0
+            case 0x31: // lwc1
+            case 0x38: // swc0
+            case 0x39: // swc1
+            {
+                return "";
             }
 
             default:
