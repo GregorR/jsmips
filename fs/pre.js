@@ -1,1 +1,1 @@
-JSMIPS = (function(JSMIPS) {
+var JSMIPS = (function(JSMIPS) {
