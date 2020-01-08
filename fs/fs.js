@@ -2982,6 +2982,11 @@ JSMIPS.mipsfork.push(function(mips, nmips) {
     // Copy our fd table, keeping stream and pos, but independently
     var nfds = mips.nfds = [];
     mips.fds.forEach(function(fd) {
+        if (fd === null) {
+            nfds.push(null);
+            return;
+        }
+
         var nfd = {
             stream: fd.stream,
             pos: fd.pos

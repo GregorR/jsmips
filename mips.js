@@ -8,8 +8,18 @@
 JSMIPS = (function(JSMIPS) {
     // The main MIPS simulator class and entry point
     var MIPS = JSMIPS.MIPS = function() {
-        this.num = mipses.push(this) - 1;
+        // Choose a pid
+        var pid;
+        for (pid = 1; pid < mipses.length && mipses[pid]; pid++);
+        if (pid === mipses.length)
+            mipses.push(null);
+        mipses[pid] = this;
+        this.num = pid;
+
+        // By default, no parent and no children
         this.pproc = null;
+        this.children = {};
+        this.zombies = {};
 
         // Registers ...
         this.regs = new Uint32Array(32);
@@ -86,7 +96,7 @@ JSMIPS = (function(JSMIPS) {
             var op = opaddr[0].buf[opaddr[1]];
 
             if (this.debug >= DEBUG_STEPS)
-                mipsDebugOut("op " + opc + "\n");
+                mipsDebugOut("op " + opc.toString(16) + "\n");
 
             // Increment the program counter
             this.pc = this.npc;
@@ -1133,6 +1143,21 @@ JSMIPS = (function(JSMIPS) {
     MIPS.prototype.stop = function() {
         this.stopped = true;
 
+        // Inform the parent
+        if (this.pproc) {
+            delete this.pproc.children[this.num];
+            this.pproc.zombies[this.num] = this;
+        } else {
+            mipses[this.num] = null;
+        }
+
+        // Get rid of any remaining li'l zombies
+        var cpid;
+        for (cpid in this.children)
+            this.children[cpid].pproc = null;
+        for (cpid in this.zombies)
+            mipses[cpid] = null;
+
         // Run the stop functions
         var i;
         for (i = 0; i < mipsstop.length; i++)
@@ -1278,7 +1303,7 @@ JSMIPS = (function(JSMIPS) {
     // mipsDebugOut defaults as a bit useless
     var mipsDebugOutTotal = "";
     var mipsDebugOut = JSMIPS.mipsDebugOut = function(text) {
-        alert(text);
+        console.log(text);
         mipsDebugOutTotal += text;
     }
 
@@ -1303,6 +1328,7 @@ JSMIPS = (function(JSMIPS) {
     // System calls and related
     var PATH_MAX = 255;
     var EBADF = JSMIPS.EBADF = 9;
+    var ECHILD = JSMIPS.ECHILD = 10;
     var ENOMEM = JSMIPS.ENOMEM = 12;
     var EINVAL = JSMIPS.EINVAL = 22;
     var ERANGE = JSMIPS.ERANGE = 34;
@@ -1387,6 +1413,7 @@ JSMIPS = (function(JSMIPS) {
 
         // the parent of that process is this process
         nmips.pproc = mips;
+        mips.children[nmips.num] = nmips;
 
         // Copy in the registers
         nmips.regs = mips.regs.slice(0);
@@ -1472,6 +1499,58 @@ JSMIPS = (function(JSMIPS) {
     }
     syscalls[4091] = sys_munmap;
 
+    // wait4(4114)
+    function sys_wait4(mips, pid, wstatus, options) {
+        pid = JSMIPS.signed(pid);
+        var rusage = mips.regs[7];
+        var ub = {};
+
+        // Specific-pid case
+        if (pid >= 0) {
+            // Wait for a specific pid
+            if (pid in mips.zombies) {
+                // Already there!
+                delete mips.zombies[pid];
+                mipses[pid] = null;
+                mips.mem.set(wstatus, 0);
+                return pid;
+            }
+
+            if (pid in mips.children) {
+                // Wait for it
+                mips.children[pid].onstop.push(function() {
+                    ub.unblock();
+                });
+                return ub;
+            }
+
+            return -ECHILD;
+        }
+
+        // General case
+        var cpid;
+        for (cpid in mips.zombies) {
+            // You'll do!
+            delete mips.zombies[cpid];
+            mipses[cpid] = null;
+            mips.mem.set(wstatus, 0);
+            return cpid;
+        }
+
+        var handled = false;
+        for (cpid in mips.children) {
+            // Wait for this one
+            mips.children[cpid].onstop.push(function() {
+                if (handled) return;
+                handled = true;
+                ub.unblock();
+            });
+        }
+
+        return ub;
+    }
+    syscalls[4114] = sys_wait4;
+
     // writev(4146)
     function sys_writev(mips, fd, iov, iovcnt) {
         // We just do writev in terms of write(4004)
@@ -1533,7 +1612,6 @@ JSMIPS = (function(JSMIPS) {
         return 0;
     }
     syscalls[4037] = sys_stub; // kill (FIXME?)
-    syscalls[4114] = function(mips) { mips.block(); return 0; }; // wait4 (FIXME!)
     syscalls[4122] = sys_stub; // uname (FIXME)
     syscalls[4194] = sys_stub; // rt_sigprocmask
     syscalls[4195] = sys_stub; // rt_sigprocmask

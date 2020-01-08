@@ -4,8 +4,9 @@ JSMIPS = (function(JSMIPS) {
     var close = JSMIPS.syscalls[4006];
 
     JSMIPS.MIPS.prototype.xterm = function(term) {
-        var curReader = null;
-        var curReaderBlocked = null;
+        var lineBuf = [];
+        var buf = [];
+        var curReadersBlocked = [];
         var mips = this;
 
         // Close stdin/stdout/stderr if they're open
@@ -20,48 +21,45 @@ JSMIPS = (function(JSMIPS) {
             if (printable)
                 term.write(e.key);
 
-            if (curReader) {
-                if (e.domEvent.keyCode === 13) curReader.buf.push(10);
-                else curReader.buf.push(e.key.charCodeAt(0));
-            }
-
             if (e.domEvent.keyCode === 13) {
                 term.write("\n");
 
                 // Line-buffered output
-                if (curReaderBlocked) {
-                    var b = curReaderBlocked;
-                    curReaderBlocked = null;
+                buf = buf.concat(lineBuf);
+                buf.push(10);
+                lineBuf = [];
+
+                // Unblock for reading
+                var bs = curReadersBlocked;
+                curReadersBlocked = [];
+                bs.forEach(function(b) {
                     b.unblock();
-                }
+                });
+
+            } else {
+                lineBuf.push(e.key.charCodeAt(0));
             }
 
         });
 
         // Device operations for this terminal
         var devOps = {
-            open: function(stream) {
-                var mode = (stream.flags&0x3);
-                if (mode !== /* O_WRONLY */ 1) {
-                    stream.buf = [];
-                    curReader = stream;
-                }
-            },
-
+            open: function() {},
             close: function() {},
 
             read: function(stream, buffer, offset, length) {
-                if (stream.buf.length === 0) {
+                if (buf.length === 0) {
                     // No input, block!
-                    curReaderBlocked = {};
-                    return curReaderBlocked;
+                    var b = {};
+                    curReadersBlocked.push(b);
+                    return b;
                 }
 
-                if (length > stream.buf.length)
-                    length = stream.buf.length;
+                if (length > buf.length)
+                    length = buf.length;
 
                 for (var i = 0; i < length; i++)
-                    buffer[offset+i] = stream.buf.shift();
+                    buffer[offset+i] = buf.shift();
 
                 return length;
             },
