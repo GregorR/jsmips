@@ -1,5 +1,9 @@
 /*
- * MIPS/Linux/Unix constants
+ * MIPS/Linux/Unix constants.
+ *
+ * Lists of constants are not actually copyrightable, and thus this code is not
+ * under copyright. Any aspect of it that may be considered copyrightable in
+ * some context is under the following license:
  *
  * Copyright (c) 2008-2010, 2020 Gregor Richards
  *
@@ -17,7 +21,7 @@
  *
  * Requires: nomath.js */
 
-JSMIPS = (function(JSMIPS) {
+var JSMIPS = (function(JSMIPS) {
     // For ioctl const generation
     function _IOC(a, b, c, d) {
         if (a === "n") a = 1;
