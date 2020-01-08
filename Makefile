@@ -1,7 +1,7 @@
 MINIFIER=closure-compiler --language_in ECMASCRIPT5
 
 JSMIPS_SRC=\
-	nomath.js vmem.js mips.js fs/fs.js xtermtty.js
+	nomath.js vmem.js consts.js mips.js fs/fs.js xtermtty.js
 
 all: dist/jsmips.js
 

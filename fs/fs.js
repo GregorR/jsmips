@@ -1,4 +1,4 @@
-JSMIPS = (function(JSMIPS) {
+var JSMIPS = (function(JSMIPS) {
 // Copyright 2010 The Emscripten Authors.  All rights reserved.
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -2775,7 +2775,7 @@ function sys_execve(mips, filename, argv, envp) {
 
     return mips.execve(filename, args, envs);
 }
-JSMIPS.syscalls[4011] = sys_execve;
+JSMIPS.syscalls[JSMIPS.NR_execve] = sys_execve;
 
 // read(4003)
 function sys_read(mips, fd, buf, count) {
@@ -2799,7 +2799,7 @@ function sys_read(mips, fd, buf, count) {
 
     return ret;
 }
-JSMIPS.syscalls[4003] = sys_read;
+JSMIPS.syscalls[JSMIPS.NR_read] = sys_read;
 
 // write(4004)
 function sys_write(mips, fd, buf, count) {
@@ -2818,7 +2818,7 @@ function sys_write(mips, fd, buf, count) {
     fd.position += ret;
     return ret;
 }
-JSMIPS.syscalls[4004] = sys_write;
+JSMIPS.syscalls[JSMIPS.NR_write] = sys_write;
 
 // open(4005)
 JSMIPS.MIPS.prototype.open = function(pathname, flags, mode) {
@@ -2855,7 +2855,7 @@ JSMIPS.MIPS.prototype.open = function(pathname, flags, mode) {
 function sys_open(mips, pathname, flags, mode) {
     return mips.open(mips.mem.getstr(pathname), flags, mode);
 }
-JSMIPS.syscalls[4005] = sys_open;
+JSMIPS.syscalls[JSMIPS.NR_open] = sys_open;
 
 // close(4006)
 function sys_close(mips, fd) {
@@ -2869,7 +2869,7 @@ function sys_close(mips, fd) {
     mips.fds[fd] = null;
     return 0;
 }
-JSMIPS.syscalls[4006] = sys_close;
+JSMIPS.syscalls[JSMIPS.NR_close] = sys_close;
 
 // dup(4041)
 JSMIPS.MIPS.prototype.dup = function(fd) {
@@ -2890,7 +2890,7 @@ JSMIPS.MIPS.prototype.dup = function(fd) {
 function sys_dup(mips, fd) {
     return mips.dup(fd);
 }
-JSMIPS.syscalls[4041] = sys_dup;
+JSMIPS.syscalls[JSMIPS.NR_dup] = sys_dup;
 
 // dup2(4063)
 function sys_dup2(mips, fd1, fd2) {
@@ -2909,7 +2909,7 @@ function sys_dup2(mips, fd1, fd2) {
     }
     return fd2;
 }
-JSMIPS.syscalls[4063] = sys_dup2;
+JSMIPS.syscalls[JSMIPS.NR_dup2] = sys_dup2;
 
 // symlink(4083)
 function sys_symlink(mips, target, linkpath) {
@@ -2926,7 +2926,7 @@ function sys_symlink(mips, target, linkpath) {
 
     return 0;
 }
-JSMIPS.syscalls[4083] = sys_symlink;
+JSMIPS.syscalls[JSMIPS.NR_symlink] = sys_symlink;
 
 // readlink(4085)
 function sys_readlink(mips, pathname, buf, bufsiz) {
@@ -2946,7 +2946,7 @@ function sys_readlink(mips, pathname, buf, bufsiz) {
 
     return target.length;
 }
-JSMIPS.syscalls[4085] = sys_readlink;
+JSMIPS.syscalls[JSMIPS.NR_readlink] = sys_readlink;
 
 // poll(4188)
 function sys_poll(mips, fds, nfds, timeout) {
@@ -2959,7 +2959,7 @@ function sys_poll(mips, fds, nfds, timeout) {
 
     return -JSMIPS.ENOTSUP;
 }
-JSMIPS.syscalls[4188] = sys_poll;
+JSMIPS.syscalls[JSMIPS.NR_poll] = sys_poll;
 
 // getcwd(4203)
 function sys_getcwd(mips, buf, size) {
@@ -2968,7 +2968,7 @@ function sys_getcwd(mips, buf, size) {
     mips.mem.setstr(buf, mips.cwd);
     return buf;
 }
-JSMIPS.syscalls[4203] = sys_getcwd;
+JSMIPS.syscalls[JSMIPS.NR_getcwd] = sys_getcwd;
 
 // stat64(4213)
 function sys_stat64(mips, pathname, statbuf) {
@@ -3032,7 +3032,7 @@ function sys_stat64(mips, pathname, statbuf) {
 
     return 0;
 }
-JSMIPS.syscalls[4213] = sys_stat64;
+JSMIPS.syscalls[JSMIPS.NR_stat64] = sys_stat64;
 
 return JSMIPS;
 })(typeof JSMIPS === "undefined" ? {} : JSMIPS);
