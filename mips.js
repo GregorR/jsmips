@@ -223,7 +223,8 @@ JSMIPS = (function(JSMIPS) {
 
                 } else {
                     var r = syscalls[callnum](this, a, b, c);
-                    console.log(`${this.num} ${callnum} ${a} ${b} ${c} => ${r}`);
+                    if (this.debug >= DEBUG_SYSCALLS)
+                        mipsDebugOut("SYSCALL " + this.num + " " + callnum + " " + a + " " + b + " " + c + " => " + r);
                     if (typeof r === "object") {
                         /* Special return meaning "block and try again". Will
                          * call a.unblock when it's ready. */
@@ -1337,7 +1338,7 @@ JSMIPS = (function(JSMIPS) {
     }
 
     // debug levels
-    var DEBUG_UNIMPL = JSMIPS.DEBUG_UNIMPL = 1;
+    var DEBUG_SYSCALLS = JSMIPS.DEBUG_SYSCALLS = 1;
     var DEBUG_NOJIT = JSMIPS.DEBUG_NOJIT = 2;
     var DEBUG_JUMPS = JSMIPS.DEBUG_JUMPS = 3;
     var DEBUG_STEPS = JSMIPS.DEBUG_STEPS = 4;
@@ -1439,6 +1440,7 @@ JSMIPS = (function(JSMIPS) {
     // fork(4002)
     function sys_fork(mips) {
         var nmips = new MIPS();
+        nmips.debug = mips.debug;
 
         // the parent of that process is this process
         nmips.pproc = mips;
