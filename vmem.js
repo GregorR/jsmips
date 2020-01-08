@@ -17,19 +17,65 @@
  */
 
 var JSMIPS = (function(JSMIPS) {
-    // virtual memory
+    /**
+     * A single page of memory
+     *
+     * @typedef {Object} Page
+     * @property {Uint32Array} buf Backing memory
+     * @property {boolean} rw     False if this page should be copied before writing
+     */
+
+    /**
+     * A memory translation
+     *
+     * @typedef {Array} Translation
+     * @property {Page} 0         The page where the address has been located
+     * @property {int} 1          The offset within the page
+     */
+
+    /**
+     * Virtual memory for the simulated MIPS system. JSMIPS's virtual memory
+     * is, fundamentally, a sparse array of Uint32Arrays, with each Uint32Array
+     * representing a single page of memory. In addition, each page keeps track
+     * of whether it's been forked, and if it has, it will be copied on writes.
+     *
+     * @memberof JSMIPS
+     * @constructor
+     */
     function VMem() {
         /* virtual memory is organized as follows
          * memArray = array of pages, top 20 bits (1024*1024 elements)
          *   each subarray = array of words, next 10 bits (1024 elements)
          *     each word = four bytes, last 2 bits */
+
+        /**
+         * Underlying memory array
+         * @private
+         * @type Object.<int, Page>
+         */
         this.memArray = {};
+
+        /**
+         * The last page number we accessed, cached
+         * @private
+         * @type {int}
+         */
         this.lastPage = -1;
+
+        /**
+         * The last page we accessed, cached
+         * @private
+         * @type {Page}
+         */
         this.lastPageMem = null;
     }
     JSMIPS.VMem = VMem;
     
-    /* Create a new page */
+    /**
+     * Create a new page
+     * @private
+     * @return {Page}
+     */
     VMem.prototype.newPage = function() {
         return {
             buf: new Uint32Array(1024),
@@ -37,9 +83,14 @@ var JSMIPS = (function(JSMIPS) {
         };
     }
     
-    /* Given a page, return the array containing that page */
+    /**
+     * Given a page number, return its Page, creating it if necessary
+     * @private
+     * @param {int} page        The page number to translate
+     * @return {Page}
+     */
     VMem.prototype.translatePage = function(page) {
-        if (this.lastPage == page) return this.lastPageMem;
+        if (this.lastPage === page) return this.lastPageMem;
     
         if (!(page in this.memArray))
             this.memArray[page] = this.newPage();
@@ -49,8 +100,13 @@ var JSMIPS = (function(JSMIPS) {
         return pmem;
     }
     
-    /* Given an aligned address, return the array containing that word and the
-     * offset */
+    /**
+     * Given a word-aligned address, return a tuple (page, offset) where that
+     * word can be accessed in memory
+     *
+     * @param {int} addr        The address to translate
+     * @return {Translation}    The translated address
+     */
     VMem.prototype.translate = function(addr) {
         // get the pieces
         var page = (addr & 0xFFFFF000) >>> 12;
@@ -59,7 +115,10 @@ var JSMIPS = (function(JSMIPS) {
         return [this.translatePage(page), word];
     }
     
-    // Like translate, but make sure it's read/write
+    /**
+     * Like translate, but make sure it's writable
+     * @see {@link JSMIPS.VMem#translate}
+     */
     VMem.prototype.translaterw = function(addr) {
         var page = (addr & 0xFFFFF000) >>> 12;
         var word = (addr & 0xFFC) >>> 2;
@@ -76,7 +135,12 @@ var JSMIPS = (function(JSMIPS) {
         return [pmem, word];
     }
 
-    // Find a fresh chunk of memory of the given length (in pages), for mmap
+    /**
+     * Find a fresh chunk of memory of the given length (in pages!), for mmap
+     * @param {int} len         Number of contiguous pages to allocate
+     * @return {(int|null)}     The base address of the allocated memory, if
+     *                          successful. null if unsuccessful.
+     */
     VMem.prototype.mmap = function(len) {
         var start, end;
         for (start = 0x60000; start < 0x100000; start++) {
@@ -99,20 +163,30 @@ var JSMIPS = (function(JSMIPS) {
         return null;
     }
 
-    // Free this many pages
+    /**
+     * Free a contiguous range of pages, intended to be paired with mmap
+     * @param {int} base        Base address of allocated space
+     * @param {int} len         Number of pages to free
+     */
     VMem.prototype.munmap = function(base, len) {
         base >>>= 12;
         for (var i = 0; i < len; i++)
             delete this.memArray[base+i];
     }
     
-    // Get a word
+    /**
+     * Get a word from memory
+     * @param {int} addr        Word-aligned address to read
+     * @return {int}            Value read
+     */
     VMem.prototype.get = function(addr) {
         var loc = this.translate(addr);
         return loc[0].buf[loc[1]];
     }
     
-    // Get a halfword
+    /**
+     * Get a halfword
+     */
     VMem.prototype.geth = function(addr) {
         var loc = this.translate(addr);
         var sloc = addr & 0x02;
@@ -120,7 +194,9 @@ var JSMIPS = (function(JSMIPS) {
         return (loc[0].buf[loc[1]] & mask) >>> ((2-sloc)<<3);
     }
     
-    // Get a byte
+    /**
+     * Get a byte
+     */
     VMem.prototype.getb = function(addr) {
         var loc = this.translate(addr);
         var sloc = addr & 0x03;
@@ -128,7 +204,9 @@ var JSMIPS = (function(JSMIPS) {
         return (loc[0].buf[loc[1]] & mask) >>> ((3-sloc)<<3);
     }
     
-    // Get a string
+    /**
+     * Get a string
+     */
     VMem.prototype.getstr = function(addr) {
         var str = "";
         var e = this.getb(addr);
@@ -140,7 +218,12 @@ var JSMIPS = (function(JSMIPS) {
         return str;
     }
     
-    // Get a string of a given length
+    /**
+     * Get a string of a given length in bytes
+     * @param {int} addr        Address to read
+     * @param {int} len         Maximum length of string to read
+     * @return {string}         String read
+     */
     VMem.prototype.getstrn = function(addr, len) {
         var str = "";
         for (var addri = addr; addri < addr + len; addri++) {
@@ -149,7 +232,9 @@ var JSMIPS = (function(JSMIPS) {
         return str;
     }
 
-    // Set a double-word
+    /**
+     * Set a double-word
+     */
     VMem.prototype.setd = function(addr, val) {
         var loc = this.translaterw(addr);
         var hi = (val / 0x100000000)>>>0;
@@ -158,13 +243,19 @@ var JSMIPS = (function(JSMIPS) {
         loc[0].buf[loc[1]] = val;
     }
     
-    // Set a word
+    /**
+     * Set a word
+     * @param {int} addr        Word-aligned address to set
+     * @param {int} val         Value to be set
+     */
     VMem.prototype.set = function(addr, val) {
         var loc = this.translaterw(addr);
         loc[0].buf[loc[1]] = val;
     }
 
-    // Set a halfword
+    /**
+     * Set a halfword
+     */
     VMem.prototype.seth = function(addr, val) {
         var loc = this.translaterw(addr);
         var sloc = addr & 0x02;
@@ -174,7 +265,9 @@ var JSMIPS = (function(JSMIPS) {
         loc[0].buf[loc[1]] = dat;
     }
 
-    // Set a byte
+    /**
+     * Set a byte
+     */
     VMem.prototype.setb = function(addr, val) {
         var loc = this.translaterw(addr);
         var sloc = addr & 0x03;
@@ -184,7 +277,9 @@ var JSMIPS = (function(JSMIPS) {
         loc[0].buf[loc[1]] = dat;
     }
 
-    // Set a string
+    /**
+     * Set a string. Note: Use this with a fixed-length string as setstrn.
+     */
     VMem.prototype.setstr = function(addr, val) {
         for (; val.length != 0; val = val.slice(1)) {
             var chr = val.charCodeAt(0);
@@ -194,7 +289,11 @@ var JSMIPS = (function(JSMIPS) {
         this.setb(addr, 0);
     }
     
-    // Fork a vmem
+    /**
+     * Fork this vmem
+     * @private
+     * @return {JSMIPS.VMem}
+     */
     VMem.prototype.fork = function() {
         var ret = new VMem();
         var p;

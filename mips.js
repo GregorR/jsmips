@@ -36,30 +36,117 @@ var JSMIPS = (function(JSMIPS) {
         if (pid === mipses.length)
             mipses.push(null);
         mipses[pid] = this;
+
+        /**
+         * This process's pid
+         * @private
+         * @type {int}
+         */
         this.num = pid;
 
-        // By default, no parent and no children
+        /**
+         * The parent of this process, or null if it is parentless or orphaned
+         * @private
+         * @type {JSMIPS.MIPS}
+         */
         this.pproc = null;
+
+        /**
+         * The children of this process
+         * @private
+         * @type {Object.<int, JSMIPS.MIPS>}
+         */
         this.children = {};
+
+        /**
+         * The zombie children of this process
+         * @private
+         * @type {Object.<int, JSMIPS.MIPS>}
+         */
         this.zombies = {};
 
-        // Registers ...
+        /**
+         * Registers
+         * @private
+         * @type {Uint32Array}
+         */
         this.regs = new Uint32Array(32);
+
+        // Special registers...
+
+        /**
+         * hi
+         * @private
+         * @type {int}
+         */
         this.rhi = 0;
+
+        /**
+         * lo
+         * @private
+         * @type {int}
+         */
         this.rlo = 0;
+
+        /**
+         * Program counter
+         * @private
+         * @type {int}
+         */
         this.pc = 0;
+
+        /**
+         * Next program counter, as a special register to get ordering of jumps
+         * correct.
+         *
+         * @private
+         * @type {int}
+         */
         this.npc = 4;
 
-        // And memory
+        /**
+         * Memory for this process.
+         *
+         * @type {JSMIPS.VMem}
+         */
         this.mem = new JSMIPS.VMem();
 
-        // The current end of the data segment (just estimated)
+        /**
+         * The current end of the data segment. FIXME: We should update this to
+         * something sensible during loadELF.
+         *
+         * @private
+         * @type {int}
+         */
         this.dataend = 0x01000000;
 
-        // Statistics
+        /**
+         * Is this process stopped?
+         * @private
+         * @type {boolean}
+         */
         this.stopped = false;
+
+        /**
+         * Is this process blocked?
+         * @private
+         * @type {boolean}
+         */
         this.blocked = false;
+
+        /**
+         * Is this process active?
+         * @private
+         * @type {boolean}
+         */
         this.running = false;
+
+        /**
+         * Debug mode for this process. Debug info is, by default, output to
+         * the console.
+         *
+         * @type {int}
+         */
         this.debug = 0;
 
         // Event handlers
