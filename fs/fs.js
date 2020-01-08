@@ -3018,6 +3018,14 @@ JSMIPS.mipsfork.push(function(mips, nmips) {
     }
 });
 
+// And when we stop, we need to close them all
+JSMIPS.mipsstop.push(function(mips) {
+    for (var fd = 0; fd < mips.fds.length; fd++) {
+        if (!mips.fds[fd]) continue;
+        sys_close(mips, fd);
+    }
+});
+
 
 // syscalls
 
@@ -3134,9 +3142,9 @@ function sys_read(mips, fd, buf, count) {
     // Read into an internal buffer
     var rbuf = new Uint8Array(count);
     var ret = stream.stream_ops.read(stream, rbuf, 0, count, fd.position);
-    if (ret === null) {
+    if (typeof ret === "object") {
         // Block (FIXME: nonblocking)
-        return null;
+        return ret;
     }
     fd.position += ret;
 

@@ -8,6 +8,7 @@ JSMIPS = (function(JSMIPS) {
         var buf = [];
         var curReadersBlocked = [];
         var mips = this;
+        var ct = 0;
 
         // Close stdin/stdout/stderr if they're open
         for (var fd = 0; fd < 3; fd++) {
@@ -44,8 +45,14 @@ JSMIPS = (function(JSMIPS) {
 
         // Device operations for this terminal
         var devOps = {
-            open: function() {},
-            close: function() {},
+            open: function() {
+                ct++;
+            },
+
+            close: function() {
+                if (--ct === 0)
+                    stop();
+            },
 
             read: function(stream, buffer, offset, length) {
                 if (buf.length === 0) {
@@ -72,6 +79,10 @@ JSMIPS = (function(JSMIPS) {
                         term.write(buffer.subarray(start, i));
                         term.write([13, 10]);
                         start = i+1;
+                    } else if (buffer[i] >= 128) {
+                        // ???
+                        term.write(buffer.subarray(start, i))
+                        start = i+1;
                     }
                 }
                 term.write(buffer.subarray(start, i));
@@ -93,10 +104,10 @@ JSMIPS = (function(JSMIPS) {
         this.open(tty, 1, 0);
 
         // Clean up when we're done
-        this.onstop.push(function(mips) {
+        function stop() {
             ok.dispose();
             FS.unlink(tty);
-        });
+        }
     };
 
     return JSMIPS;

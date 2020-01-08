@@ -222,16 +222,17 @@ JSMIPS = (function(JSMIPS) {
                     this.stop();
 
                 } else {
-                    a = syscalls[callnum](this, a, b, c);
-                    if (typeof a === "object") {
+                    var r = syscalls[callnum](this, a, b, c);
+                    console.log(`${this.num} ${callnum} ${a} ${b} ${c} => ${r}`);
+                    if (typeof r === "object") {
                         /* Special return meaning "block and try again". Will
                          * call a.unblock when it's ready. */
                         this.block();
                         this.pc = opc;
                         this.npc = opc + 4;
-                        a.unblock = this.unblock.bind(this);
+                        r.unblock = this.unblock.bind(this);
                     } else {
-                        this.regs[2] = a;
+                        this.regs[2] = r;
                         this.regs[7] = 0;
                     }
 
@@ -1363,13 +1364,13 @@ JSMIPS = (function(JSMIPS) {
     var ENOTSUP = JSMIPS.ENOTSUP = 122;
 
 
-    // exit(1), exit_group(4246)
+    // exit(1)
     function sys_exit(mips) {
         mips.stop();
         return 0;
     }
     syscalls[1] = sys_exit;
-    syscalls[4246] = sys_exit;
+    syscalls[4246] = sys_exit; // exit_group
 
 /*  Original versions, mostly to be integrated as appropriate.
     // getegid (43)
@@ -1484,6 +1485,7 @@ JSMIPS = (function(JSMIPS) {
         return mips.num;
     }
     syscalls[4020] = sys_getpid;
+    syscalls[4132] = sys_getpid; // getpgid
     syscalls[4222] = sys_getpid; // gettid
 
     // getuid(4024) and friends
@@ -1492,7 +1494,6 @@ JSMIPS = (function(JSMIPS) {
     }
     syscalls[4024] = sys_getuid;
     syscalls[4049] = sys_getuid; // geteuid
-    syscalls[4132] = sys_getuid; // getpgid
 
     // brk(4045)
     function sys_brk(mips, nb) {
@@ -1502,10 +1503,33 @@ JSMIPS = (function(JSMIPS) {
     }
     syscalls[4045] = sys_brk;
 
+    // setpgid(4057)
+    function sys_setpgid(mips, pid, pgid) {
+        if (pid === 0)
+            pid = mips.num;
+        if (pgid === 0)
+            pgid = mips.num;
+        if (pid !== pgid)
+            return -ENOTSUP;
+        return 0;
+    }
+    syscalls[4057] = sys_setpgid;
+
+    // _IOC (for ioctl)
+    function _IOC(a, b, c, d) {
+        if (a === "n") a = 1;
+        else if (a === "r") a = 2;
+        else if (a === "w") a = 4;
+        b = b.charCodeAt(0);
+        return JSMIPS.unsigned(((a)<<29) | ((b)<<8) | (c) | ((d)<<16));
+    }
+    JSMIPS._IOC = _IOC;
+
     // ioctl(4054)
-    function sys_ioctl(mips, request, a, b) {
+    function sys_ioctl(mips, fd, request, a) {
         if (request in ioctls)
-            return ioctls[request](mips, request, a, b);
+            return ioctls[request](mips, fd, request, a);
+        mipsDebugOut("Unsupported ioctl " + request.toString(16));
         return -ENOTSUP;
     }
     syscalls[4054] = sys_ioctl;
@@ -1564,6 +1588,9 @@ JSMIPS = (function(JSMIPS) {
             mips.mem.set(wstatus, 0);
             return cpid;
         }
+
+        if (Object.keys(mips.children).length === 0)
+            return -ECHILD;
 
         var handled = false;
         for (cpid in mips.children) {
@@ -1628,7 +1655,7 @@ JSMIPS = (function(JSMIPS) {
     // clock_gettime(4263)
     function sys_clock_gettime(mips, clk_id, tp) {
         // FIXME: Just ignoring the clock ID
-        var tm = new Date().getTime()/1000;
+        var tm = new Date().getTime() / 1000;
         mips.mem.set(tp, tm);
         mips.mem.set(tp+4, (tm*1000000000)%1000000000);
         return 0;
@@ -1641,11 +1668,41 @@ JSMIPS = (function(JSMIPS) {
     }
     syscalls[4037] = sys_stub; // kill (FIXME?)
     syscalls[4122] = sys_stub; // uname (FIXME)
-    syscalls[4194] = sys_stub; // rt_sigprocmask
+    syscalls[4194] = sys_stub; // rt_sigaction
     syscalls[4195] = sys_stub; // rt_sigprocmask
     syscalls[4220] = sys_stub; // fcntl64 (FIXME)
     syscalls[4252] = sys_stub; // set_tid_address
     syscalls[4283] = sys_stub; // set_thread_area
+
+
+    // ioctls
+
+    var TCGETS = 0x540D;
+    ioctls[TCGETS] = function() {
+        return -ENOTSUP;
+    };
+
+    var TIOCGWINSZ = _IOC("r", 't', 104, 8);
+    ioctls[TIOCGWINSZ] = function() {
+        return -ENOTSUP;
+    };
+
+    var TIOCSPGRP = _IOC("w", 't', 118, 4);
+    ioctls[TIOCSPGRP] = function(mips, fd, r, pgrp) {
+        pgrp = mips.mem.get(pgrp);
+        if (pgrp !== mips.num) {
+            // Yeah, not really implemented
+            return -ENOTSUP;
+        }
+        return 0;
+    };
+
+    var TIOCGPGRP = _IOC("r", 't', 119, 4);
+    ioctls[TIOCGPGRP] = function(mips, fd, r, t) {
+        // We are always our own controlling process
+        mips.mem.set(t, mips.num);
+        return 0;
+    };
 
     return JSMIPS;
 })(typeof JSMIPS === "undefined" ? {} : JSMIPS);
