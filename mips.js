@@ -5,8 +5,17 @@
  * Requires: nomath.js and vmem.js
  */
 
+/**
+ * All JSMIPS functionality is under the JSMIPS object
+ * @namespace JSMIPS
+ */
+
 JSMIPS = (function(JSMIPS) {
-    // The main MIPS simulator class and entry point
+    /**
+     * A MIPS processor and process, and the main entry point for JSMIPS
+     * @memberof JSMIPS
+     * @constructor
+     */
     var MIPS = JSMIPS.MIPS = function() {
         // Choose a pid
         var pid;
@@ -48,7 +57,9 @@ JSMIPS = (function(JSMIPS) {
             mipsinit[i](this);
     }
 
-    // Run the MIPS machine
+    /**
+     * Asynchronously run the MIPS machine. May or may not finish immediately.
+     */
     MIPS.prototype.run = function(step) {
         if (typeof step === "undefined") step = false;
 
@@ -113,7 +124,7 @@ JSMIPS = (function(JSMIPS) {
                 this.jtype(opc, opcode, op);
 
             } else if ((opcode & 0xFC) == 0x10) {
-                this.coproc(opc, opcode, op);
+                // Ignored and unsupported
 
             } else {
                 this.itype(opc, opcode, op);
@@ -145,7 +156,13 @@ JSMIPS = (function(JSMIPS) {
         }
     }
 
-    // R-type instructions
+    /**
+     * Run a single r-type instruction
+     * @private
+     * @param {int} opc         The opcode program counter
+     * @param {int} opcode      The extracted opcode
+     * @param {int} op          The entire instruction
+     */
     MIPS.prototype.rtype = function(opc, opcode, op) {
         // Pull out the components
         var rs   = (op & 0x03E00000) >>> 21;
@@ -369,7 +386,13 @@ JSMIPS = (function(JSMIPS) {
         }
     }
 
-    // I-type instructions
+    /**
+     * Run a single i-type instruction
+     * @private
+     * @param {int} opc         The opcode program counter
+     * @param {int} opcode      The extracted opcode
+     * @param {int} op          The entire instruction
+     */
     MIPS.prototype.itype = function(opc, opcode, op) {
         // Pull out the components
         var rs   = (op & 0x03E00000) >>> 21;
@@ -646,7 +669,13 @@ JSMIPS = (function(JSMIPS) {
         }
     }
 
-    // J-type instructions
+    /**
+     * Run a single j-type instruction
+     * @private
+     * @param {int} opc         The opcode program counter
+     * @param {int} opcode      The extracted opcode
+     * @param {int} op          The entire instruction
+     */
     MIPS.prototype.jtype = function(opc, opcode, op) {
         // Pull out the target
         var targ = op & 0x03FFFFFF;
@@ -669,11 +698,18 @@ JSMIPS = (function(JSMIPS) {
         }
     }
 
-    MIPS.prototype.coproc = function(opc, opcode, op) {
-        // ignored annd unsupported
-    }
-
-    // jit-ize code, returning a function which runs some jitted code in the current context
+    /**
+     * Compile a page of code, returning a function which will run an
+     * unspecified number of instructions in that page. The returned function
+     * will itself return true if everything was successful and execution
+     * should continue as normal, or false if an unsupported instruction has
+     * been reached and execution must continue in the interpreter.
+     *
+     * @private
+     * @param {Uint8Array} page The page to be compiled
+     * @param {int} baseaddr    The base address of that page
+     * @return {Function}       The compiled function
+     */
     MIPS.prototype.jitize = function(page, baseaddr) {
         var i;
         var strfunc = "var res; var bc = 0;";
@@ -713,7 +749,13 @@ JSMIPS = (function(JSMIPS) {
         return Function("mips", strfunc);
     }
 
-    // JIT one instruction
+    /**
+     * Compile a single instruction.
+     * @private
+     * @param {int} opc         The address of the instruction to be compiled
+     * @param {int=} op         The extracted instruction
+     * @return {(string|boolean)} JavaScript code to execute this instruction, or false on failure
+     */
     MIPS.prototype.jitone = function(opc, op) {
         // Now get the opcode
         if (op == undefined) var op = this.mem.get(opc);
@@ -736,7 +778,10 @@ JSMIPS = (function(JSMIPS) {
         }
     }
 
-    // JIT R-type instructions
+    /**
+     * Compile an r-type instruction
+     * @private
+     */
     MIPS.prototype.jrtype = function(opc, opcode, op) {
         // Pull out the components
         var rs   = (op & 0x03E00000) >>> 21;
@@ -911,7 +956,10 @@ JSMIPS = (function(JSMIPS) {
         }
     }
 
-    // JIT J-type instructions
+    /**
+     * Compile a j-type instruction
+     * @private
+     */
     MIPS.prototype.jjtype = function(opc, opcode, op) {
         // Pull out the target
         var targ = op & 0x03FFFFFF;
@@ -946,7 +994,10 @@ JSMIPS = (function(JSMIPS) {
         }
     }
 
-    // JIT I-type instructions
+    /**
+     * Compile an i-type instruction
+     * @private
+     */
     MIPS.prototype.jitype = function(opc, opcode, op) {
         // Pull out the components
         var rs   = (op & 0x03E00000) >>> 21;
@@ -1169,7 +1220,10 @@ JSMIPS = (function(JSMIPS) {
     }
 
 
-    // stop the machine
+    /**
+     * Stop the machine/process. Usually to be used internally, e.g. by the
+     * exit system call, but can be used externally as an emergency stop.
+     */
     MIPS.prototype.stop = function() {
         this.stopped = true;
 
@@ -1198,20 +1252,26 @@ JSMIPS = (function(JSMIPS) {
             this.onstop[i](this);
     }
 
-    // block the machine
+    /**
+     * Block the machine, usually awaiting input.
+     * @private
+     */
     MIPS.prototype.block = function() {
         this.blocked = true;
     }
 
-    // unblock the machine
+    /**
+     * Unblock the machine
+     * @private
+     */
     MIPS.prototype.unblock = function() {
         this.blocked = false;
         if (!this.running) this.run();
     }
 
 
-    // extract a string from somewhere in a file, given an offset not pre-divided by 4. length is optional
-    MIPS.prototype.fileGetString = function(f, off, length) {
+    // Extract a string from somewhere in a file, given an offset not pre-divided by 4. length is optional
+    function fileGetString(f, off, length) {
         var str = "";
         var i;
         var uselength = false;
@@ -1232,6 +1292,17 @@ JSMIPS = (function(JSMIPS) {
         return str;
     }
 
+    /**
+     * Load an ELF file into memory. The ELF file must be an array of 32-bit
+     * unsigned integers defined by a big-endian reading of the ELF file
+     * (perhaps with extra bytes at the end), but may be an actual Uint32Array,
+     * an Array, or anything else with the right interface. This function only
+     * loads the ELF file; it doesn't load arguments, set up the stack, or
+     * anything of the sort. Unless you're eschewing a filesystem, you almost
+     * certainly want [MIPS.execve]{@link JSMIPS.MIPS#execve}.
+     *
+     * @param {Uint32Array} elf The ELF file
+     */
     // load an ELF into memory
     MIPS.prototype.loadELF = function(elf) {
         this.mem = new JSMIPS.VMem();
@@ -1295,10 +1366,10 @@ JSMIPS = (function(JSMIPS) {
             for (var onsh = 0; onsh < e_shnum; onsh++) {
                 curshoff += e_shentsize;
 
-                var sh_name = this.fileGetString(elf, stroff + elf[curshoff]);
+                var sh_name = fileGetString(elf, stroff + elf[curshoff]);
 
                 if (sh_name === ".jsmips_javascript") {
-                    jscode = this.fileGetString(elf, elf[curshoff + 4], elf[curshoff + 5]); // sh_offset and sh_size
+                    jscode = fileGetString(elf, elf[curshoff + 4], elf[curshoff + 5]); // sh_offset and sh_size
                     break;
                 }
             }
@@ -1311,23 +1382,92 @@ JSMIPS = (function(JSMIPS) {
         }
     }
 
-    // the array of all MIPS simulators
+    /**
+     * All current machines/processes.
+     * @private
+     * @memberof JSMIPS
+     * @type {Array.<JSMIPS.MIPS>}
+     */
     var mipses = JSMIPS.mipses = [];
     mipses.push(null); // no pid 0
 
-    // all syscalls
+    /**
+     * A blocking indicator is how syscalls indicate blocking back to JSMIPS,
+     * or anything else using the syscalls indirectly. They return (typically)
+     * an empty object, and then JSMIPS itself adds the unblock function to it.
+     *
+     * @typedef {Object} BlockingIndicator
+     * @property {Function} unblock Call to unblock the target
+     */
+
+    /**
+     * A syscall takes its arguments and returns its result, a negative errno
+     * if an error occurred, or an object to request blocking.
+     *
+     * @typedef {Function} Syscall
+     * @param {JSMIPS.MIPS} mips The MIPS machine/process which invoked the syscall
+     * @param {int} a           The first syscall argument
+     * @param {int} b           The second syscall argument
+     * @param {int} c           The third syscall argument
+     * @return {(int|BlockingIndicator)}
+     */
+
+    /**
+     * All of the syscalls supported by JSMIPS. Extending it as a user is fine,
+     * but probably rarely needed. JSMIPS modules add their own syscalls. Note
+     * that the syscall interface only provides three syscall arguments;
+     * syscalls requiring more should use mips.regs[7...] directly.
+     *
+     * @memberof JSMIPS
+     * @type Object.<int, Syscall>
+     */
     var syscalls = JSMIPS.syscalls = {};
 
-    // and ioctls
+    /**
+     * An ioctl takes the arguments of the NR_ioctl system call and returns its
+     * result, or an object to request blocking.
+     *
+     * @typedef {Function} Ioctl
+     * @param {JSMIPS.MIPS} mips The MIPS machine/process which invoked the ioctl
+     * @param {int} request     The ioctl requested
+     * @param {int} a           The first ioctl argument
+     * @param {int} b           The second ioctl argument
+     * @return {(int|BlockingIndicator)}
+     */
+
+    /**
+     * All of the ioctls supported by JSMIPS.
+     *
+     * @see {@link JSMIPS.syscalls}
+     * @memberof JSMIPS
+     * @type Object.<int, Ioctl>
+     */
     var ioctls = JSMIPS.ioctls = {};
 
-    // initialization functions
+    /**
+     * Functions to be called when a new MIPS machine is initialized, but NOT
+     * created by forking.
+     *
+     * @private
+     * @memberof JSMIPS
+     * @type Array.<Function>
+     */
     var mipsinit = JSMIPS.mipsinit = [];
 
-    // forking functions
+    /**
+     * Functions to be called when a new MIPS machine is created by forking.
+     * @private
+     * @memberof JSMIPS
+     * @type Array.<Function>
+     */
     var mipsfork = JSMIPS.mipsfork = [];
 
-    // halting functions
+    /**
+     * Functions to be called when a MIPS machine is stopped.
+     * @private
+     * @memberof JSMIPS
+     * @type Array.<Function>
+     */
     var mipsstop = JSMIPS.mipsstop = [];
 
     // mipsDebugOut defaults as a bit useless
