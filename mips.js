@@ -1679,18 +1679,21 @@ JSMIPS = (function(JSMIPS) {
 
     // ioctls
 
-    var TCGETS = 0x540D;
-    ioctls[TCGETS] = function() {
+    JSMIPS.TCGETS = 0x540D;
+    ioctls[JSMIPS.TCGETS] = function() {
         return -ENOTSUP;
     };
 
-    var TIOCGWINSZ = _IOC("r", 't', 104, 8);
-    ioctls[TIOCGWINSZ] = function() {
-        return -ENOTSUP;
+    JSMIPS.TIOCGWINSZ = _IOC("r", 't', 104, 8);
+    ioctls[JSMIPS.TIOCGWINSZ] = function(mips, fd, r, winsz) {
+        // It's... 80x25. Yeah. Sure.
+        mips.mem.seth(winsz, 80);
+        mips.mem.seth(winsz+2, 25);
+        return 0;
     };
 
-    var TIOCSPGRP = _IOC("w", 't', 118, 4);
-    ioctls[TIOCSPGRP] = function(mips, fd, r, pgrp) {
+    JSMIPS.TIOCSPGRP = _IOC("w", 't', 118, 4);
+    ioctls[JSMIPS.TIOCSPGRP] = function(mips, fd, r, pgrp) {
         pgrp = mips.mem.get(pgrp);
         if (pgrp !== mips.num) {
             // Yeah, not really implemented
@@ -1699,8 +1702,8 @@ JSMIPS = (function(JSMIPS) {
         return 0;
     };
 
-    var TIOCGPGRP = _IOC("r", 't', 119, 4);
-    ioctls[TIOCGPGRP] = function(mips, fd, r, t) {
+    JSMIPS.TIOCGPGRP = _IOC("r", 't', 119, 4);
+    ioctls[JSMIPS.TIOCGPGRP] = function(mips, fd, r, t) {
         // We are always our own controlling process
         mips.mem.set(t, mips.num);
         return 0;
