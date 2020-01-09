@@ -32,6 +32,7 @@ var JSMIPS = (function(JSMIPS) {
 
     var toAdd = {
         // errno.h
+        ENOENT: 2,
         EBADF: 9,
         ECHILD: 10,
         ENOMEM: 12,
@@ -40,6 +41,18 @@ var JSMIPS = (function(JSMIPS) {
         ENOTSUP: 122,
 
         // fcntl.h
+        O_RDONLY: 0,
+        O_WRONLY: 01,
+        O_RDWR: 02,
+        O_APPEND: 010,
+        O_CREAT: 0400,
+        O_TRUNC: 01000,
+        O_EXCL: 02000,
+        O_SYNC: 040020,
+        O_DIRECTORY: 0200000,
+        O_NOFOLLOW: 0400000,
+        O_PATH: 010000000,
+        O_ACCMODE: 010000003,
         F_SETFD: 2,
 
         // ioctl.h
@@ -86,6 +99,22 @@ var JSMIPS = (function(JSMIPS) {
         NR_clock_gettime: 4263,
         NR_set_thread_area: 4283,
         NR_exit_group: 4246,
+
+        // sys/stat.h
+        S_ISVTX: 01000,
+        S_IFIFO: 0010000,
+        S_IFCHR: 0020000,
+        S_IFDIR: 0040000,
+        S_IFBLK: 0060000,
+        S_IFREG: 0100000,
+        S_IFLNK: 0120000,
+        S_IFMT: 0170000,
+        // strange mixed modes invented by Emscripten FS
+        S_IXUGO: 0111,
+        S_IWUGO: 0222,
+        S_IRUGO: 0444,
+        S_IRWXUGO: 0777,
+        S_IALLUGO: 0777,
     };
 
     /**

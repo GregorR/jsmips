@@ -8,12 +8,12 @@ mergeInto(LibraryManager.library, {
   $MEMFS: {
     ops_table: null,
     mount: function(mount) {
-      return MEMFS.createNode(null, '/', /* S_IFDIR */ 0040000 | 511 /* 0777 */, 0);
+      return MEMFS.createNode(null, '/', ( cDefine('S_IFDIR') ) | 511 /* 0777 */, 0);
     },
     createNode: function(parent, name, mode, dev) {
       if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
         // no supported
-        throw new FS.ErrnoError(/* EPERM */ 1);
+        throw new FS.ErrnoError(( cDefine('EPERM') ));
       }
       if (!MEMFS.ops_table) {
         MEMFS.ops_table = {
@@ -192,7 +192,7 @@ mergeInto(LibraryManager.library, {
         }
       },
       lookup: function(parent, name) {
-        throw FS.genericErrors[/* ENOENT */ 2];
+        throw FS.genericErrors[( cDefine('ENOENT') )];
       },
       mknod: function(parent, name, mode, dev) {
         return MEMFS.createNode(parent, name, mode, dev);
@@ -207,7 +207,7 @@ mergeInto(LibraryManager.library, {
           }
           if (new_node) {
             for (var i in new_node.contents) {
-              throw new FS.ErrnoError(/* ENOTEMPTY */ 93);
+              throw new FS.ErrnoError(( cDefine('ENOTEMPTY') ));
             }
           }
         }
@@ -223,7 +223,7 @@ mergeInto(LibraryManager.library, {
       rmdir: function(parent, name) {
         var node = FS.lookupNode(parent, name);
         for (var i in node.contents) {
-          throw new FS.ErrnoError(/* ENOTEMPTY */ 93);
+          throw new FS.ErrnoError(( cDefine('ENOTEMPTY') ));
         }
         delete parent.contents[name];
       },
@@ -238,13 +238,13 @@ mergeInto(LibraryManager.library, {
         return entries;
       },
       symlink: function(parent, newname, oldpath) {
-        var node = MEMFS.createNode(parent, newname, 511 /* 0777 */ | /* S_IFLNK */ 0120000, 0);
+        var node = MEMFS.createNode(parent, newname, 511 /* 0777 */ | ( cDefine('S_IFLNK') ), 0);
         node.link = oldpath;
         return node;
       },
       readlink: function(node) {
         if (!FS.isLink(node.mode)) {
-          throw new FS.ErrnoError(/* EINVAL */ 22);
+          throw new FS.ErrnoError(( cDefine('EINVAL') ));
         }
         return node.link;
       },
@@ -269,6 +269,7 @@ mergeInto(LibraryManager.library, {
       //         with canOwn=true, creating a copy of the bytes is avoided, but the caller shouldn't touch the passed in range
       //         of bytes anymore since their contents now represent file data inside the filesystem.
       write: function(stream, buffer, offset, length, position, canOwn) {
+
         if (!length) return 0;
         var node = stream.node;
         node.timestamp = Date.now();
@@ -302,15 +303,15 @@ mergeInto(LibraryManager.library, {
 
       llseek: function(stream, offset, whence) {
         var position = offset;
-        if (whence === /* SEEK_CUR */ 1) {
+        if (whence === ( cDefine('SEEK_CUR') )) {
           position += stream.position;
-        } else if (whence === /* SEEK_END */ 2) {
+        } else if (whence === ( cDefine('SEEK_END') )) {
           if (FS.isFile(stream.node.mode)) {
             position += stream.node.usedBytes;
           }
         }
         if (position < 0) {
-          throw new FS.ErrnoError(/* EINVAL */ 22);
+          throw new FS.ErrnoError(( cDefine('EINVAL') ));
         }
         return position;
       },
@@ -320,13 +321,13 @@ mergeInto(LibraryManager.library, {
       },
       mmap: function(stream, buffer, offset, length, position, prot, flags) {
         if (!FS.isFile(stream.node.mode)) {
-          throw new FS.ErrnoError(/* ENODEV */ 19);
+          throw new FS.ErrnoError(( cDefine('ENODEV') ));
         }
         var ptr;
         var allocated;
         var contents = stream.node.contents;
         // Only make a new copy when MAP_PRIVATE is specified.
-        if ( !(flags & /* MAP_PRIVATE */ 0x02) &&
+        if ( !(flags & ( cDefine('MAP_PRIVATE') )) &&
               contents.buffer === buffer.buffer ) {
           // We can't emulate MAP_SHARED when the file is not backed by the buffer
           // we're mapping to (e.g. the HEAP buffer).
@@ -347,7 +348,7 @@ mergeInto(LibraryManager.library, {
           var fromHeap = (buffer.buffer == HEAP8.buffer);
           ptr = _malloc(length);
           if (!ptr) {
-            throw new FS.ErrnoError(/* ENOMEM */ 12);
+            throw new FS.ErrnoError(( cDefine('ENOMEM') ));
           }
           (fromHeap ? HEAP8 : buffer).set(contents, ptr);
         }
@@ -355,9 +356,9 @@ mergeInto(LibraryManager.library, {
       },
       msync: function(stream, buffer, offset, length, mmapFlags) {
         if (!FS.isFile(stream.node.mode)) {
-          throw new FS.ErrnoError(/* ENODEV */ 19);
+          throw new FS.ErrnoError(( cDefine('ENODEV') ));
         }
-        if (mmapFlags & /* MAP_PRIVATE */ 0x02) {
+        if (mmapFlags & ( cDefine('MAP_PRIVATE') )) {
           // MAP_PRIVATE calls need not to be synced back to underlying fs
           return 0;
         }

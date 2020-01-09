@@ -66,7 +66,7 @@ mergeInto(LibraryManager.library, {
       }
 
       if (opts.recurse_count > 8) {  // max recursive lookup of 8
-        throw new FS.ErrnoError(/* ELOOP */ 90);
+        throw new FS.ErrnoError(( cDefine('ELOOP') ));
       }
 
       // split the path
@@ -107,7 +107,7 @@ mergeInto(LibraryManager.library, {
             current = lookup.node;
 
             if (count++ > 40) {  // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
-              throw new FS.ErrnoError(/* ELOOP */ 90);
+              throw new FS.ErrnoError(( cDefine('ELOOP') ));
             }
           }
         }
@@ -133,6 +133,7 @@ mergeInto(LibraryManager.library, {
     //
     hashName: function(parentid, name) {
       var hash = 0;
+
 
       for (var i = 0; i < name.length; i++) {
         hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
@@ -194,8 +195,8 @@ mergeInto(LibraryManager.library, {
         FS.FSNode.prototype = {};
 
         // compatibility
-        var readMode = /* S_IRUGO|S_IXUGO */ 0555;
-        var writeMode = /* S_IWUGO */ 0222;
+        var readMode = ( cDefine('S_IRUGO') ) | ( cDefine('S_IXUGO') );
+        var writeMode = ( cDefine('S_IWUGO') );
 
         // NOTE we must use Object.defineProperties instead of individual calls to
         // Object.defineProperty in order to make closure compiler happy
@@ -233,46 +234,46 @@ mergeInto(LibraryManager.library, {
       return !!node.mounted;
     },
     isFile: function(mode) {
-      return (mode & /* S_IFMT */ 0170000) === /* S_IFREG */ 0100000;
+      return (mode & ( cDefine('S_IFMT') )) === ( cDefine('S_IFREG') );
     },
     isDir: function(mode) {
-      return (mode & /* S_IFMT */ 0170000) === /* S_IFDIR */ 0040000;
+      return (mode & ( cDefine('S_IFMT') )) === ( cDefine('S_IFDIR') );
     },
     isLink: function(mode) {
-      return (mode & /* S_IFMT */ 0170000) === /* S_IFLNK */ 0120000;
+      return (mode & ( cDefine('S_IFMT') )) === ( cDefine('S_IFLNK') );
     },
     isChrdev: function(mode) {
-      return (mode & /* S_IFMT */ 0170000) === /* S_IFCHR */ 0020000;
+      return (mode & ( cDefine('S_IFMT') )) === ( cDefine('S_IFCHR') );
     },
     isBlkdev: function(mode) {
-      return (mode & /* S_IFMT */ 0170000) === /* S_IFBLK */ 0060000;
+      return (mode & ( cDefine('S_IFMT') )) === ( cDefine('S_IFBLK') );
     },
     isFIFO: function(mode) {
-      return (mode & /* S_IFMT */ 0170000) === /* S_IFIFO */ 0010000;
+      return (mode & ( cDefine('S_IFMT') )) === ( cDefine('S_IFIFO') );
     },
     isSocket: function(mode) {
-      return (mode & /* S_IFSOCK */ 0140000) === /* S_IFSOCK */ 0140000;
+      return (mode & ( cDefine('S_IFSOCK') )) === ( cDefine('S_IFSOCK') );
     },
 
     //
     // permissions
     //
     flagModes: {
-      "r": /* O_RDONLY */ 0,
-      "rs": /* O_RDONLY */ 0 | /* O_SYNC */ 040020,
-      "r+": /* O_RDWR */ 02,
-      "w": /* O_TRUNC */ 01000 | /* O_CREAT */ 0400 | /* O_WRONLY */ 01,
-      "wx": /* O_TRUNC */ 01000 | /* O_CREAT */ 0400 | /* O_WRONLY */ 01 | /* O_EXCL */ 0200,
-      "xw": /* O_TRUNC */ 01000 | /* O_CREAT */ 0400 | /* O_WRONLY */ 01 | /* O_EXCL */ 0200,
-      "w+": /* O_TRUNC */ 01000 | /* O_CREAT */ 0400 | /* O_RDWR */ 02,
-      "wx+": /* O_TRUNC */ 01000 | /* O_CREAT */ 0400 | /* O_RDWR */ 02 | /* O_EXCL */ 0200,
-      "xw+": /* O_TRUNC */ 01000 | /* O_CREAT */ 0400 | /* O_RDWR */ 02 | /* O_EXCL */ 0200,
-      "a": /* O_APPEND */ 0010 | /* O_CREAT */ 0400 | /* O_WRONLY */ 01,
-      "ax": /* O_APPEND */ 0010 | /* O_CREAT */ 0400 | /* O_WRONLY */ 01 | /* O_EXCL */ 0200,
-      "xa": /* O_APPEND */ 0010 | /* O_CREAT */ 0400 | /* O_WRONLY */ 01 | /* O_EXCL */ 0200,
-      "a+": /* O_APPEND */ 0010 | /* O_CREAT */ 0400 | /* O_RDWR */ 02,
-      "ax+": /* O_APPEND */ 0010 | /* O_CREAT */ 0400 | /* O_RDWR */ 02 | /* O_EXCL */ 0200,
-      "xa+": /* O_APPEND */ 0010 | /* O_CREAT */ 0400 | /* O_RDWR */ 02 | /* O_EXCL */ 0200
+      'r': ( cDefine('O_RDONLY') ),
+      'rs': ( cDefine('O_RDONLY') ) | ( cDefine('O_SYNC') ),
+      'r+': ( cDefine('O_RDWR') ),
+      'w': ( cDefine('O_TRUNC') ) | ( cDefine('O_CREAT') ) | ( cDefine('O_WRONLY') ),
+      'wx': ( cDefine('O_TRUNC') ) | ( cDefine('O_CREAT') ) | ( cDefine('O_WRONLY') ) | ( cDefine('O_EXCL') ),
+      'xw': ( cDefine('O_TRUNC') ) | ( cDefine('O_CREAT') ) | ( cDefine('O_WRONLY') ) | ( cDefine('O_EXCL') ),
+      'w+': ( cDefine('O_TRUNC') ) | ( cDefine('O_CREAT') ) | ( cDefine('O_RDWR') ),
+      'wx+': ( cDefine('O_TRUNC') ) | ( cDefine('O_CREAT') ) | ( cDefine('O_RDWR') ) | ( cDefine('O_EXCL') ),
+      'xw+': ( cDefine('O_TRUNC') ) | ( cDefine('O_CREAT') ) | ( cDefine('O_RDWR') ) | ( cDefine('O_EXCL') ),
+      'a': ( cDefine('O_APPEND') ) | ( cDefine('O_CREAT') ) | ( cDefine('O_WRONLY') ),
+      'ax': ( cDefine('O_APPEND') ) | ( cDefine('O_CREAT') ) | ( cDefine('O_WRONLY') ) | ( cDefine('O_EXCL') ),
+      'xa': ( cDefine('O_APPEND') ) | ( cDefine('O_CREAT') ) | ( cDefine('O_WRONLY') ) | ( cDefine('O_EXCL') ),
+      'a+': ( cDefine('O_APPEND') ) | ( cDefine('O_CREAT') ) | ( cDefine('O_RDWR') ),
+      'ax+': ( cDefine('O_APPEND') ) | ( cDefine('O_CREAT') ) | ( cDefine('O_RDWR') ) | ( cDefine('O_EXCL') ),
+      'xa+': ( cDefine('O_APPEND') ) | ( cDefine('O_CREAT') ) | ( cDefine('O_RDWR') ) | ( cDefine('O_EXCL') )
     },
     // convert the 'r', 'r+', etc. to it's corresponding set of O_* flags
     modeStringToFlags: function(str) {
@@ -285,7 +286,7 @@ mergeInto(LibraryManager.library, {
     // convert O_* bitmask to a string for nodePermissions
     flagsToPermissionString: function(flag) {
       var perms = ['r', 'w', 'rw'][flag & 3];
-      if ((flag & /* O_TRUNC */ 01000)) {
+      if ((flag & ( cDefine('O_TRUNC') ))) {
         perms += 'w';
       }
       return perms;
@@ -295,25 +296,25 @@ mergeInto(LibraryManager.library, {
         return 0;
       }
       // return 0 if any user, group or owner bits are set.
-      if (perms.indexOf('r') !== -1 && !(node.mode & /* S_IRUGO */ 0444)) {
-        return /* EACCES */ 13;
-      } else if (perms.indexOf('w') !== -1 && !(node.mode & /* S_IWUGO */ 0222)) {
-        return /* EACCES */ 13;
-      } else if (perms.indexOf('x') !== -1 && !(node.mode & /* S_IXUGO */ 0111)) {
-        return /* EACCES */ 13;
+      if (perms.indexOf('r') !== -1 && !(node.mode & ( cDefine('S_IRUGO') ))) {
+        return ( cDefine('EACCES') );
+      } else if (perms.indexOf('w') !== -1 && !(node.mode & ( cDefine('S_IWUGO') ))) {
+        return ( cDefine('EACCES') );
+      } else if (perms.indexOf('x') !== -1 && !(node.mode & ( cDefine('S_IXUGO') ))) {
+        return ( cDefine('EACCES') );
       }
       return 0;
     },
     mayLookup: function(dir) {
       var err = FS.nodePermissions(dir, 'x');
       if (err) return err;
-      if (!dir.node_ops.lookup) return /* EACCES */ 13;
+      if (!dir.node_ops.lookup) return ( cDefine('EACCES') );
       return 0;
     },
     mayCreate: function(dir, name) {
       try {
         var node = FS.lookupNode(dir, name);
-        return /* EEXIST */ 17;
+        return ( cDefine('EEXIST') );
       } catch (e) {
       }
       return FS.nodePermissions(dir, 'wx');
@@ -331,28 +332,28 @@ mergeInto(LibraryManager.library, {
       }
       if (isdir) {
         if (!FS.isDir(node.mode)) {
-          return /* ENOTDIR */ 20;
+          return ( cDefine('ENOTDIR') );
         }
         if (FS.isRoot(node) || FS.getPath(node) === FS.cwd()) {
-          return /* EBUSY */ 16;
+          return ( cDefine('EBUSY') );
         }
       } else {
         if (FS.isDir(node.mode)) {
-          return /* EISDIR */ 21;
+          return ( cDefine('EISDIR') );
         }
       }
       return 0;
     },
     mayOpen: function(node, flags) {
       if (!node) {
-        return /* ENOENT */ 2;
+        return ( cDefine('ENOENT') );
       }
       if (FS.isLink(node.mode)) {
-        return /* ELOOP */ 90;
+        return ( cDefine('ELOOP') );
       } else if (FS.isDir(node.mode)) {
         if (FS.flagsToPermissionString(flags) !== 'r' || // opening for write
-            (flags & /* O_TRUNC */ 01000)) { // TODO: check for O_SEARCH? (== search for dir only)
-          return /* EISDIR */ 21;
+            (flags & ( cDefine('O_TRUNC') ))) { // TODO: check for O_SEARCH? (== search for dir only)
+          return ( cDefine('EISDIR') );
         }
       }
       return FS.nodePermissions(node, FS.flagsToPermissionString(flags));
@@ -370,7 +371,7 @@ mergeInto(LibraryManager.library, {
           return fd;
         }
       }
-      throw new FS.ErrnoError(/* EMFILE */ 24);
+      throw new FS.ErrnoError(( cDefine('EMFILE') ));
     },
     getStream: function(fd) {
       return FS.streams[fd];
@@ -389,13 +390,13 @@ mergeInto(LibraryManager.library, {
             set: function(val) { this.node = val; }
           },
           isRead: {
-            get: function() { return (this.flags & /* O_ACCMODE */ 010000003) !== /* O_WRONLY */ 01; }
+            get: function() { return (this.flags & ( cDefine('O_ACCMODE') )) !== ( cDefine('O_WRONLY') ); }
           },
           isWrite: {
-            get: function() { return (this.flags & /* O_ACCMODE */ 010000003) !== /* O_RDONLY */ 0; }
+            get: function() { return (this.flags & ( cDefine('O_ACCMODE') )) !== ( cDefine('O_RDONLY') ); }
           },
           isAppend: {
-            get: function() { return (this.flags & /* O_APPEND */ 0010); }
+            get: function() { return (this.flags & ( cDefine('O_APPEND') )); }
           }
         });
       }
@@ -434,7 +435,7 @@ mergeInto(LibraryManager.library, {
         }
       },
       llseek: function() {
-        throw new FS.ErrnoError(/* ESPIPE */ 29);
+        throw new FS.ErrnoError(( cDefine('ESPIPE') ));
       }
     },
     major: function(dev) {
@@ -517,7 +518,7 @@ mergeInto(LibraryManager.library, {
       var node;
 
       if (root && FS.root) {
-        throw new FS.ErrnoError(/* EBUSY */ 16);
+        throw new FS.ErrnoError(( cDefine('EBUSY') ));
       } else if (!root && !pseudo) {
         var lookup = FS.lookupPath(mountpoint, { follow_mount: false });
 
@@ -525,11 +526,11 @@ mergeInto(LibraryManager.library, {
         node = lookup.node;
 
         if (FS.isMountpoint(node)) {
-          throw new FS.ErrnoError(/* EBUSY */ 16);
+          throw new FS.ErrnoError(( cDefine('EBUSY') ));
         }
 
         if (!FS.isDir(node.mode)) {
-          throw new FS.ErrnoError(/* ENOTDIR */ 20);
+          throw new FS.ErrnoError(( cDefine('ENOTDIR') ));
         }
       }
 
@@ -563,7 +564,7 @@ mergeInto(LibraryManager.library, {
       var lookup = FS.lookupPath(mountpoint, { follow_mount: false });
 
       if (!FS.isMountpoint(lookup.node)) {
-        throw new FS.ErrnoError(/* EINVAL */ 22);
+        throw new FS.ErrnoError(( cDefine('EINVAL') ));
       }
 
       // destroy the nodes for this mount, and all its child mounts
@@ -601,28 +602,28 @@ mergeInto(LibraryManager.library, {
       var parent = lookup.node;
       var name = PATH.basename(path);
       if (!name || name === '.' || name === '..') {
-        throw new FS.ErrnoError(/* EINVAL */ 22);
+        throw new FS.ErrnoError(( cDefine('EINVAL') ));
       }
       var err = FS.mayCreate(parent, name);
       if (err) {
         throw new FS.ErrnoError(err);
       }
       if (!parent.node_ops.mknod) {
-        throw new FS.ErrnoError(/* EPERM */ 1);
+        throw new FS.ErrnoError(( cDefine('EPERM') ));
       }
       return parent.node_ops.mknod(parent, name, mode, dev);
     },
     // helpers to create specific types of nodes
     create: function(path, mode) {
       mode = mode !== undefined ? mode : 438 /* 0666 */;
-      mode &= /* S_IALLUGO */ 0777;
-      mode |= /* S_IFREG */ 0100000;
+      mode &= ( cDefine('S_IALLUGO') );
+      mode |= ( cDefine('S_IFREG') );
       return FS.mknod(path, mode, 0);
     },
     mkdir: function(path, mode) {
       mode = mode !== undefined ? mode : 511 /* 0777 */;
-      mode &= /* S_IRWXUGO */ 0777 | /* S_ISVTX */ 01000;
-      mode |= /* S_IFDIR */ 0040000;
+      mode &= ( cDefine('S_IRWXUGO') ) | ( cDefine('S_ISVTX') );
+      mode |= ( cDefine('S_IFDIR') );
       return FS.mknod(path, mode, 0);
     },
     // Creates a whole directory tree chain if it doesn't yet exist
@@ -635,7 +636,7 @@ mergeInto(LibraryManager.library, {
         try {
           FS.mkdir(d, mode);
         } catch(e) {
-          if (e.errno != /* EEXIST */ 17) throw e;
+          if (e.errno != ( cDefine('EEXIST') )) throw e;
         }
       }
     },
@@ -644,17 +645,17 @@ mergeInto(LibraryManager.library, {
         dev = mode;
         mode = 438 /* 0666 */;
       }
-      mode |= /* S_IFCHR */ 0020000;
+      mode |= ( cDefine('S_IFCHR') );
       return FS.mknod(path, mode, dev);
     },
     symlink: function(oldpath, newpath) {
       if (!PATH_FS.resolve(oldpath)) {
-        throw new FS.ErrnoError(/* ENOENT */ 2);
+        throw new FS.ErrnoError(( cDefine('ENOENT') ));
       }
       var lookup = FS.lookupPath(newpath, { parent: true });
       var parent = lookup.node;
       if (!parent) {
-        throw new FS.ErrnoError(/* ENOENT */ 2);
+        throw new FS.ErrnoError(( cDefine('ENOENT') ));
       }
       var newname = PATH.basename(newpath);
       var err = FS.mayCreate(parent, newname);
@@ -662,7 +663,7 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(err);
       }
       if (!parent.node_ops.symlink) {
-        throw new FS.ErrnoError(/* EPERM */ 1);
+        throw new FS.ErrnoError(( cDefine('EPERM') ));
       }
       return parent.node_ops.symlink(parent, newname, oldpath);
     },
@@ -679,24 +680,24 @@ mergeInto(LibraryManager.library, {
         lookup = FS.lookupPath(new_path, { parent: true });
         new_dir = lookup.node;
       } catch (e) {
-        throw new FS.ErrnoError(/* EBUSY */ 16);
+        throw new FS.ErrnoError(( cDefine('EBUSY') ));
       }
-      if (!old_dir || !new_dir) throw new FS.ErrnoError(/* ENOENT */ 2);
+      if (!old_dir || !new_dir) throw new FS.ErrnoError(( cDefine('ENOENT') ));
       // need to be part of the same mount
       if (old_dir.mount !== new_dir.mount) {
-        throw new FS.ErrnoError(/* EXDEV */ 18);
+        throw new FS.ErrnoError(( cDefine('EXDEV') ));
       }
       // source must exist
       var old_node = FS.lookupNode(old_dir, old_name);
       // old path should not be an ancestor of the new path
       var relative = PATH_FS.relative(old_path, new_dirname);
       if (relative.charAt(0) !== '.') {
-        throw new FS.ErrnoError(/* EINVAL */ 22);
+        throw new FS.ErrnoError(( cDefine('EINVAL') ));
       }
       // new path should not be an ancestor of the old path
       relative = PATH_FS.relative(new_path, old_dirname);
       if (relative.charAt(0) !== '.') {
-        throw new FS.ErrnoError(/* ENOTEMPTY */ 93);
+        throw new FS.ErrnoError(( cDefine('ENOTEMPTY') ));
       }
       // see if the new path already exists
       var new_node;
@@ -724,10 +725,10 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(err);
       }
       if (!old_dir.node_ops.rename) {
-        throw new FS.ErrnoError(/* EPERM */ 1);
+        throw new FS.ErrnoError(( cDefine('EPERM') ));
       }
       if (FS.isMountpoint(old_node) || (new_node && FS.isMountpoint(new_node))) {
-        throw new FS.ErrnoError(/* EBUSY */ 16);
+        throw new FS.ErrnoError(( cDefine('EBUSY') ));
       }
       // if we are going to change the parent, check write permissions
       if (new_dir !== old_dir) {
@@ -771,10 +772,10 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(err);
       }
       if (!parent.node_ops.rmdir) {
-        throw new FS.ErrnoError(/* EPERM */ 1);
+        throw new FS.ErrnoError(( cDefine('EPERM') ));
       }
       if (FS.isMountpoint(node)) {
-        throw new FS.ErrnoError(/* EBUSY */ 16);
+        throw new FS.ErrnoError(( cDefine('EBUSY') ));
       }
       try {
         if (FS.trackingDelegate['willDeletePath']) {
@@ -795,7 +796,7 @@ mergeInto(LibraryManager.library, {
       var lookup = FS.lookupPath(path, { follow: true });
       var node = lookup.node;
       if (!node.node_ops.readdir) {
-        throw new FS.ErrnoError(/* ENOTDIR */ 20);
+        throw new FS.ErrnoError(( cDefine('ENOTDIR') ));
       }
       return node.node_ops.readdir(node);
     },
@@ -812,10 +813,10 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(err);
       }
       if (!parent.node_ops.unlink) {
-        throw new FS.ErrnoError(/* EPERM */ 1);
+        throw new FS.ErrnoError(( cDefine('EPERM') ));
       }
       if (FS.isMountpoint(node)) {
-        throw new FS.ErrnoError(/* EBUSY */ 16);
+        throw new FS.ErrnoError(( cDefine('EBUSY') ));
       }
       try {
         if (FS.trackingDelegate['willDeletePath']) {
@@ -836,10 +837,10 @@ mergeInto(LibraryManager.library, {
       var lookup = FS.lookupPath(path);
       var link = lookup.node;
       if (!link) {
-        throw new FS.ErrnoError(/* ENOENT */ 2);
+        throw new FS.ErrnoError(( cDefine('ENOENT') ));
       }
       if (!link.node_ops.readlink) {
-        throw new FS.ErrnoError(/* EINVAL */ 22);
+        throw new FS.ErrnoError(( cDefine('EINVAL') ));
       }
       return PATH_FS.resolve(FS.getPath(link.parent), link.node_ops.readlink(link));
     },
@@ -847,10 +848,10 @@ mergeInto(LibraryManager.library, {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
       var node = lookup.node;
       if (!node) {
-        throw new FS.ErrnoError(/* ENOENT */ 2);
+        throw new FS.ErrnoError(( cDefine('ENOENT') ));
       }
       if (!node.node_ops.getattr) {
-        throw new FS.ErrnoError(/* EPERM */ 1);
+        throw new FS.ErrnoError(( cDefine('EPERM') ));
       }
       return node.node_ops.getattr(node);
     },
@@ -866,10 +867,10 @@ mergeInto(LibraryManager.library, {
         node = path;
       }
       if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError(/* EPERM */ 1);
+        throw new FS.ErrnoError(( cDefine('EPERM') ));
       }
       node.node_ops.setattr(node, {
-        mode: (mode & /* S_IALLUGO */ 0777) | (node.mode & ~/* S_IALLUGO */ 0777),
+        mode: (mode & ( cDefine('S_IALLUGO') )) | (node.mode & ~( cDefine('S_IALLUGO') )),
         timestamp: Date.now()
       });
     },
@@ -879,7 +880,7 @@ mergeInto(LibraryManager.library, {
     fchmod: function(fd, mode) {
       var stream = FS.getStream(fd);
       if (!stream) {
-        throw new FS.ErrnoError(/* EBADF */ 9);
+        throw new FS.ErrnoError(( cDefine('EBADF') ));
       }
       FS.chmod(stream.node, mode);
     },
@@ -892,7 +893,7 @@ mergeInto(LibraryManager.library, {
         node = path;
       }
       if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError(/* EPERM */ 1);
+        throw new FS.ErrnoError(( cDefine('EPERM') ));
       }
       node.node_ops.setattr(node, {
         timestamp: Date.now()
@@ -905,13 +906,13 @@ mergeInto(LibraryManager.library, {
     fchown: function(fd, uid, gid) {
       var stream = FS.getStream(fd);
       if (!stream) {
-        throw new FS.ErrnoError(/* EBADF */ 9);
+        throw new FS.ErrnoError(( cDefine('EBADF') ));
       }
       FS.chown(stream.node, uid, gid);
     },
     truncate: function(path, len) {
       if (len < 0) {
-        throw new FS.ErrnoError(/* EINVAL */ 22);
+        throw new FS.ErrnoError(( cDefine('EINVAL') ));
       }
       var node;
       if (typeof path === 'string') {
@@ -921,13 +922,13 @@ mergeInto(LibraryManager.library, {
         node = path;
       }
       if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError(/* EPERM */ 1);
+        throw new FS.ErrnoError(( cDefine('EPERM') ));
       }
       if (FS.isDir(node.mode)) {
-        throw new FS.ErrnoError(/* EISDIR */ 21);
+        throw new FS.ErrnoError(( cDefine('EISDIR') ));
       }
       if (!FS.isFile(node.mode)) {
-        throw new FS.ErrnoError(/* EINVAL */ 22);
+        throw new FS.ErrnoError(( cDefine('EINVAL') ));
       }
       var err = FS.nodePermissions(node, 'w');
       if (err) {
@@ -941,10 +942,10 @@ mergeInto(LibraryManager.library, {
     ftruncate: function(fd, len) {
       var stream = FS.getStream(fd);
       if (!stream) {
-        throw new FS.ErrnoError(/* EBADF */ 9);
+        throw new FS.ErrnoError(( cDefine('EBADF') ));
       }
-      if ((stream.flags & /* O_ACCMODE */ 010000003) === /* O_RDONLY */ 0) {
-        throw new FS.ErrnoError(/* EINVAL */ 22);
+      if ((stream.flags & ( cDefine('O_ACCMODE') )) === ( cDefine('O_RDONLY'))) {
+        throw new FS.ErrnoError(( cDefine('EINVAL') ));
       }
       FS.truncate(stream.node, len);
     },
@@ -957,12 +958,12 @@ mergeInto(LibraryManager.library, {
     },
     open: function(path, flags, mode, fd_start, fd_end) {
       if (path === "") {
-        throw new FS.ErrnoError(/* ENOENT */ 2);
+        throw new FS.ErrnoError(( cDefine('ENOENT') ));
       }
       flags = typeof flags === 'string' ? FS.modeStringToFlags(flags) : flags;
       mode = typeof mode === 'undefined' ? 438 /* 0666 */ : mode;
-      if ((flags & /* O_CREAT */ 0400)) {
-        mode = (mode & /* S_IALLUGO */ 0777) | /* S_IFREG */ 0100000;
+      if ((flags & ( cDefine('O_CREAT') ))) {
+        mode = (mode & ( cDefine('S_IALLUGO') )) | ( cDefine('S_IFREG') );
       } else {
         mode = 0;
       }
@@ -973,7 +974,7 @@ mergeInto(LibraryManager.library, {
         path = PATH.normalize(path);
         try {
           var lookup = FS.lookupPath(path, {
-            follow: !(flags & /* O_NOFOLLOW */ 0400000)
+            follow: !(flags & ( cDefine('O_NOFOLLOW') ))
           });
           node = lookup.node;
         } catch (e) {
@@ -982,11 +983,11 @@ mergeInto(LibraryManager.library, {
       }
       // perhaps we need to create the node
       var created = false;
-      if ((flags & /* O_CREAT */ 0400)) {
+      if ((flags & ( cDefine('O_CREAT') ))) {
         if (node) {
           // if O_CREAT and O_EXCL are set, error out if the node already exists
-          if ((flags & /* O_EXCL */ 0200)) {
-            throw new FS.ErrnoError(/* EEXIST */ 17);
+          if ((flags & ( cDefine('O_EXCL') ))) {
+            throw new FS.ErrnoError(( cDefine('EEXIST') ));
           }
         } else {
           // node doesn't exist, try to create it
@@ -995,15 +996,15 @@ mergeInto(LibraryManager.library, {
         }
       }
       if (!node) {
-        throw new FS.ErrnoError(/* ENOENT */ 2);
+        throw new FS.ErrnoError(( cDefine('ENOENT') ));
       }
       // can't truncate a device
       if (FS.isChrdev(node.mode)) {
-        flags &= ~/* O_TRUNC */ 01000;
+        flags &= ~( cDefine('O_TRUNC') );
       }
       // if asked only for a directory, then this must be one
-      if ((flags & /* O_DIRECTORY */ 0200000) && !FS.isDir(node.mode)) {
-        throw new FS.ErrnoError(/* ENOTDIR */ 20);
+      if ((flags & ( cDefine('O_DIRECTORY') )) && !FS.isDir(node.mode)) {
+        throw new FS.ErrnoError(( cDefine('ENOTDIR') ));
       }
       // check permissions, if this is not a file we just created now (it is ok to
       // create and write to a file with read-only permissions; it is read-only
@@ -1015,11 +1016,11 @@ mergeInto(LibraryManager.library, {
         }
       }
       // do truncation if necessary
-      if ((flags & /* O_TRUNC */ 01000)) {
+      if ((flags & ( cDefine('O_TRUNC')))) {
         FS.truncate(node, 0);
       }
       // we've already handled these, don't pass down to the underlying vfs
-      flags &= ~(/* O_EXCL */ 0200 | /* O_TRUNC */ 01000);
+      flags &= ~(( cDefine('O_EXCL') ) | ( cDefine('O_TRUNC') ));
 
       // register the stream with the filesystem
       var stream = FS.createStream({
@@ -1037,7 +1038,7 @@ mergeInto(LibraryManager.library, {
       if (stream.stream_ops.open) {
         stream.stream_ops.open(stream);
       }
-      if (Module['logReadFiles'] && !(flags & /* O_WRONLY */ 01)) {
+      if (Module['logReadFiles'] && !(flags & ( cDefine('O_WRONLY')))) {
         if (!FS.readFiles) FS.readFiles = {};
         if (!(path in FS.readFiles)) {
           FS.readFiles[path] = 1;
@@ -1047,10 +1048,10 @@ mergeInto(LibraryManager.library, {
       try {
         if (FS.trackingDelegate['onOpenFile']) {
           var trackingFlags = 0;
-          if ((flags & /* O_ACCMODE */ 010000003) !== /* O_WRONLY */ 01) {
+          if ((flags & ( cDefine('O_ACCMODE') )) !== ( cDefine('O_WRONLY') )) {
             trackingFlags |= FS.tracking.openFlags.READ;
           }
-          if ((flags & /* O_ACCMODE */ 010000003) !== /* O_RDONLY */ 0) {
+          if ((flags & ( cDefine('O_ACCMODE') )) !== ( cDefine('O_RDONLY') )) {
             trackingFlags |= FS.tracking.openFlags.WRITE;
           }
           FS.trackingDelegate['onOpenFile'](path, trackingFlags);
@@ -1062,7 +1063,7 @@ mergeInto(LibraryManager.library, {
     },
     close: function(stream) {
       if (FS.isClosed(stream)) {
-        throw new FS.ErrnoError(/* EBADF */ 9);
+        throw new FS.ErrnoError(( cDefine('EBADF') ));
       }
       if (stream.getdents) stream.getdents = null; // free readdir state
       try {
@@ -1081,13 +1082,13 @@ mergeInto(LibraryManager.library, {
     },
     llseek: function(stream, offset, whence) {
       if (FS.isClosed(stream)) {
-        throw new FS.ErrnoError(/* EBADF */ 9);
+        throw new FS.ErrnoError(( cDefine('EBADF') ));
       }
       if (!stream.seekable || !stream.stream_ops.llseek) {
-        throw new FS.ErrnoError(/* ESPIPE */ 29);
+        throw new FS.ErrnoError(( cDefine('ESPIPE') ));
       }
-      if (whence != /* SEEK_SET */ 0 && whence != /* SEEK_CUR */ 1 && whence != /* SEEK_END */ 2) {
-        throw new FS.ErrnoError(/* EINVAL */ 22);
+      if (whence != ( cDefine('SEEK_SET') ) && whence != ( cDefine('SEEK_CUR') ) && whence != ( cDefine('SEEK_END') )) {
+        throw new FS.ErrnoError(( cDefine('EINVAL') ));
       }
       stream.position = stream.stream_ops.llseek(stream, offset, whence);
       stream.ungotten = [];
@@ -1095,25 +1096,25 @@ mergeInto(LibraryManager.library, {
     },
     read: function(stream, buffer, offset, length, position) {
       if (length < 0 || position < 0) {
-        throw new FS.ErrnoError(/* EINVAL */ 22);
+        throw new FS.ErrnoError(( cDefine('EINVAL') ));
       }
       if (FS.isClosed(stream)) {
-        throw new FS.ErrnoError(/* EBADF */ 9);
+        throw new FS.ErrnoError(( cDefine('EBADF') ));
       }
-      if ((stream.flags & /* O_ACCMODE */ 010000003) === /* O_WRONLY */ 01) {
-        throw new FS.ErrnoError(/* EBADF */ 9);
+      if ((stream.flags & ( cDefine('O_ACCMODE') )) === ( cDefine('O_WRONLY'))) {
+        throw new FS.ErrnoError(( cDefine('EBADF') ));
       }
       if (FS.isDir(stream.node.mode)) {
-        throw new FS.ErrnoError(/* EISDIR */ 21);
+        throw new FS.ErrnoError(( cDefine('EISDIR') ));
       }
       if (!stream.stream_ops.read) {
-        throw new FS.ErrnoError(/* EINVAL */ 22);
+        throw new FS.ErrnoError(( cDefine('EINVAL') ));
       }
       var seeking = typeof position !== 'undefined';
       if (!seeking) {
         position = stream.position;
       } else if (!stream.seekable) {
-        throw new FS.ErrnoError(/* ESPIPE */ 29);
+        throw new FS.ErrnoError(( cDefine('ESPIPE') ));
       }
       var bytesRead = stream.stream_ops.read(stream, buffer, offset, length, position);
       if (!seeking) stream.position += bytesRead;
@@ -1121,29 +1122,29 @@ mergeInto(LibraryManager.library, {
     },
     write: function(stream, buffer, offset, length, position, canOwn) {
       if (length < 0 || position < 0) {
-        throw new FS.ErrnoError(/* EINVAL */ 22);
+        throw new FS.ErrnoError(( cDefine('EINVAL') ));
       }
       if (FS.isClosed(stream)) {
-        throw new FS.ErrnoError(/* EBADF */ 9);
+        throw new FS.ErrnoError(( cDefine('EBADF') ));
       }
-      if ((stream.flags & /* O_ACCMODE */ 010000003) === /* O_RDONLY */ 0) {
-        throw new FS.ErrnoError(/* EBADF */ 9);
+      if ((stream.flags & ( cDefine('O_ACCMODE') )) === ( cDefine('O_RDONLY'))) {
+        throw new FS.ErrnoError(( cDefine('EBADF') ));
       }
       if (FS.isDir(stream.node.mode)) {
-        throw new FS.ErrnoError(/* EISDIR */ 21);
+        throw new FS.ErrnoError(( cDefine('EISDIR') ));
       }
       if (!stream.stream_ops.write) {
-        throw new FS.ErrnoError(/* EINVAL */ 22);
+        throw new FS.ErrnoError(( cDefine('EINVAL') ));
       }
-      if (stream.flags & /* O_APPEND */ 0010) {
+      if (stream.flags & ( cDefine('O_APPEND') )) {
         // seek to the end before writing in append mode
-        FS.llseek(stream, 0, /* SEEK_END */ 2);
+        FS.llseek(stream, 0, ( cDefine('SEEK_END') ));
       }
       var seeking = typeof position !== 'undefined';
       if (!seeking) {
         position = stream.position;
       } else if (!stream.seekable) {
-        throw new FS.ErrnoError(/* ESPIPE */ 29);
+        throw new FS.ErrnoError(( cDefine('ESPIPE') ));
       }
       var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
       if (!seeking) stream.position += bytesWritten;
@@ -1156,19 +1157,19 @@ mergeInto(LibraryManager.library, {
     },
     allocate: function(stream, offset, length) {
       if (FS.isClosed(stream)) {
-        throw new FS.ErrnoError(/* EBADF */ 9);
+        throw new FS.ErrnoError(( cDefine('EBADF') ));
       }
       if (offset < 0 || length <= 0) {
-        throw new FS.ErrnoError(/* EINVAL */ 22);
+        throw new FS.ErrnoError(( cDefine('EINVAL') ));
       }
-      if ((stream.flags & /* O_ACCMODE */ 010000003) === /* O_RDONLY */ 0) {
-        throw new FS.ErrnoError(/* EBADF */ 9);
+      if ((stream.flags & ( cDefine('O_ACCMODE') )) === ( cDefine('O_RDONLY'))) {
+        throw new FS.ErrnoError(( cDefine('EBADF') ));
       }
       if (!FS.isFile(stream.node.mode) && !FS.isDir(stream.node.mode)) {
-        throw new FS.ErrnoError(/* ENODEV */ 19);
+        throw new FS.ErrnoError(( cDefine('ENODEV') ));
       }
       if (!stream.stream_ops.allocate) {
-        throw new FS.ErrnoError(/* EOPNOTSUPP */ 122);
+        throw new FS.ErrnoError(( cDefine('EOPNOTSUPP') ));
       }
       stream.stream_ops.allocate(stream, offset, length);
     },
@@ -1179,16 +1180,16 @@ mergeInto(LibraryManager.library, {
       // to write to file opened in read-only mode with MAP_PRIVATE flag,
       // as all modifications will be visible only in the memory of
       // the current process.
-      if ((prot & /* PROT_WRITE */ 2) !== 0
-          && (flags & /* MAP_PRIVATE */ 0x02) === 0
-          && (stream.flags & /* O_ACCMODE */ 010000003) !== /* O_RDWR */ 02) {
-        throw new FS.ErrnoError(/* EACCES */ 13);
+      if ((prot & ( cDefine('PROT_WRITE') )) !== 0
+          && (flags & ( cDefine('MAP_PRIVATE'))) === 0
+          && (stream.flags & ( cDefine('O_ACCMODE') )) !== ( cDefine('O_RDWR'))) {
+        throw new FS.ErrnoError(( cDefine('EACCES') ));
       }
-      if ((stream.flags & /* O_ACCMODE */ 010000003) === /* O_WRONLY */ 01) {
-        throw new FS.ErrnoError(/* EACCES */ 13);
+      if ((stream.flags & ( cDefine('O_ACCMODE') )) === ( cDefine('O_WRONLY'))) {
+        throw new FS.ErrnoError(( cDefine('EACCES') ));
       }
       if (!stream.stream_ops.mmap) {
-        throw new FS.ErrnoError(/* ENODEV */ 19);
+        throw new FS.ErrnoError(( cDefine('ENODEV') ));
       }
       return stream.stream_ops.mmap(stream, buffer, offset, length, position, prot, flags);
     },
@@ -1203,7 +1204,7 @@ mergeInto(LibraryManager.library, {
     },
     ioctl: function(stream, cmd, arg) {
       if (!stream.stream_ops.ioctl) {
-        throw new FS.ErrnoError(/* ENOTTY */ 25);
+        throw new FS.ErrnoError(( cDefine('ENOTTY') ));
       }
       return stream.stream_ops.ioctl(stream, cmd, arg);
     },
@@ -1253,10 +1254,10 @@ mergeInto(LibraryManager.library, {
     chdir: function(path) {
       var lookup = FS.lookupPath(path, { follow: true });
       if (lookup.node === null) {
-        throw new FS.ErrnoError(/* ENOENT */ 2);
+        throw new FS.ErrnoError(( cDefine('ENOENT') ));
       }
       if (!FS.isDir(lookup.node.mode)) {
-        throw new FS.ErrnoError(/* ENOTDIR */ 20);
+        throw new FS.ErrnoError(( cDefine('ENOTDIR') ));
       }
       var err = FS.nodePermissions(lookup.node, 'x');
       if (err) {
@@ -1311,12 +1312,12 @@ mergeInto(LibraryManager.library, {
       FS.mkdir('/proc/self/fd');
       FS.mount({
         mount: function() {
-          var node = FS.createNode('/proc/self', 'fd', /* S_IFDIR */ 0040000 | 511 /* 0777 */, /* S_IXUGO */ 0111);
+          var node = FS.createNode('/proc/self', 'fd', ( cDefine('S_IFDIR') ) | 511 /* 0777 */, ( cDefine('S_IXUGO') ));
           node.node_ops = {
             lookup: function(parent, name) {
               var fd = +name;
               var stream = FS.getStream(fd);
-              if (!stream) throw new FS.ErrnoError(/* EBADF */ 9);
+              if (!stream) throw new FS.ErrnoError(( cDefine('EBADF') ));
               var ret = {
                 parent: null,
                 mount: { mountpoint: 'fake' },
@@ -1374,7 +1375,7 @@ mergeInto(LibraryManager.library, {
       FS.ErrnoError.prototype = new Error();
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;
       // Some errors may happen quite a bit, to avoid overhead we reuse them (and suffer a lack of stack info)
-      [/* ENOENT */ 2].forEach(function(code) {
+      [( cDefine('ENOENT') )].forEach(function(code) {
         FS.genericErrors[code] = new FS.ErrnoError(code);
         FS.genericErrors[code].stack = '<generic error, no stack>';
       });
@@ -1426,8 +1427,8 @@ mergeInto(LibraryManager.library, {
     //
     getMode: function(canRead, canWrite) {
       var mode = 0;
-      if (canRead) mode |= /* S_IRUGO */ 0444 | /* S_IXUGO */ 0111;
-      if (canWrite) mode |= /* S_IWUGO */ 0222;
+      if (canRead) mode |= ( cDefine('S_IRUGO') ) | ( cDefine('S_IXUGO') );
+      if (canWrite) mode |= ( cDefine('S_IWUGO') );
       return mode;
     },
     joinPath: function(parts, forceRelative) {
@@ -1515,7 +1516,7 @@ mergeInto(LibraryManager.library, {
           data = arr;
         }
         // make sure we can write to the file
-        FS.chmod(node, mode | /* S_IWUGO */ 0222);
+        FS.chmod(node, mode | ( cDefine('S_IWUGO') ));
         var stream = FS.open(node, 'w');
         FS.write(stream, data, 0, data.length, 0, canOwn);
         FS.close(stream);
@@ -1537,7 +1538,7 @@ mergeInto(LibraryManager.library, {
         close: function(stream) {
           // flush any pending line data
           if (output && output.buffer && output.buffer.length) {
-            output(("\n").charCodeAt(0));
+            output(( charCode('\n') ));
           }
         },
         read: function(stream, buffer, offset, length, pos /* ignored */) {
@@ -1547,10 +1548,10 @@ mergeInto(LibraryManager.library, {
             try {
               result = input();
             } catch (e) {
-              throw new FS.ErrnoError(/* EIO */ 5);
+              throw new FS.ErrnoError(( cDefine('EIO') ));
             }
             if (result === undefined && bytesRead === 0) {
-              throw new FS.ErrnoError(/* EAGAIN */ 11);
+              throw new FS.ErrnoError(( cDefine('EAGAIN') ));
             }
             if (result === null || result === undefined) break;
             bytesRead++;
@@ -1566,7 +1567,7 @@ mergeInto(LibraryManager.library, {
             try {
               output(buffer[offset+i]);
             } catch (e) {
-              throw new FS.ErrnoError(/* EIO */ 5);
+              throw new FS.ErrnoError(( cDefine('EIO') ));
             }
           }
           if (length) {
@@ -1601,7 +1602,7 @@ mergeInto(LibraryManager.library, {
       } else {
         throw new Error('Cannot load without read() or XMLHttpRequest.');
       }
-      if (!success) ___setErrNo(/* EIO */ 5);
+      if (!success) ___setErrNo(( cDefine('EIO') ));
       return success;
     },
     // Creates a file record for lazy-loading from a URL. XXX This requires a synchronous
@@ -1737,7 +1738,7 @@ mergeInto(LibraryManager.library, {
         var fn = node.stream_ops[key];
         stream_ops[key] = function forceLoadLazyFile() {
           if (!FS.forceLoadFile(node)) {
-            throw new FS.ErrnoError(/* EIO */ 5);
+            throw new FS.ErrnoError(( cDefine('EIO') ));
           }
           return fn.apply(null, arguments);
         };
@@ -1745,7 +1746,7 @@ mergeInto(LibraryManager.library, {
       // use a custom read function
       stream_ops.read = function stream_ops_read(stream, buffer, offset, length, position) {
         if (!FS.forceLoadFile(node)) {
-          throw new FS.ErrnoError(/* EIO */ 5);
+          throw new FS.ErrnoError(( cDefine('EIO') ));
         }
         var contents = stream.node.contents;
         if (position >= contents.length)
@@ -1903,3 +1904,7 @@ mergeInto(LibraryManager.library, {
     }
   }
 });
+
+if (FORCE_FILESYSTEM) {
+  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$FS');
+}
