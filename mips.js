@@ -341,7 +341,10 @@ var JSMIPS = (function(JSMIPS) {
                 } else {
                     var r = syscalls[callnum](this, a, b, c);
                     if (this.debug >= DEBUG_SYSCALLS)
-                        mipsDebugOut("SYSCALL " + this.num + " " + callnum + " " + a + " " + b + " " + c + " => " + r);
+                        mipsDebugOut("SYSCALL " + this.num + " " +
+                            (JSMIPS.rconsts[callnum]||callnum) + " " +
+                            a + " " + b + " " + c + " => " +
+                            r);
                     if (typeof r === "object") {
                         /* Special return meaning "block and try again". Will
                          * call a.unblock when it's ready. */
@@ -1524,6 +1527,27 @@ var JSMIPS = (function(JSMIPS) {
     var syscalls = JSMIPS.syscalls = {};
 
     /**
+     * An fcntl takes the arguments of the NR_fcntl64 system call and returns
+     * its result, or an object to request blocking.
+     *
+     * @typedef {Function} Fcntl
+     * @param {JSMIPS.MIPS} mips The MIPS machine/process which invoked the fcntl
+     * @param {int} fd          File descriptor
+     * @param {int} cmd         The fcntl requested
+     * @param {int} a           The first fcntl argument
+     * @return {(int|BlockingIndicator)}
+     */
+
+    /**
+     * All of the fcntls supported by JSMIPS.
+     *
+     * @see {@link JSMIPS.syscalls}
+     * @memberof JSMIPS
+     * @type Object.<int, Fcntl>
+     */
+    var fcntls = JSMIPS.fcntls = {};
+
+    /**
      * An ioctl takes the arguments of the NR_ioctl system call and returns its
      * result, or an object to request blocking.
      *
@@ -1753,8 +1777,15 @@ var JSMIPS = (function(JSMIPS) {
 
     // ioctl(4054)
     function sys_ioctl(mips, fd, request, a) {
-        if (request in ioctls)
-            return ioctls[request](mips, fd, request, a);
+        if (request in ioctls) {
+            var r = ioctls[request](mips, fd, request, a);
+            if (mips.debug >= DEBUG_SYSCALLS)
+                mipsDebugOut("IOCTL " + mips.num + " " + fd + " " +
+                    (JSMIPS.rconsts[request]||request) + " " +
+                    a + " => " + r);
+            return r;
+        }
+
         mipsDebugOut("Unsupported ioctl " + request.toString(16));
         return -JSMIPS.ENOTSUP;
     }
@@ -1878,6 +1909,22 @@ var JSMIPS = (function(JSMIPS) {
     }
     syscalls[JSMIPS.NR_mmap2] = sys_mmap2;
 
+    // fcntl64(4220)
+    function sys_fcntl64(mips, fd, cmd, a) {
+        if (cmd in fcntls) {
+            var r = fcntls[cmd](mips, fd, cmd, a);
+            if (mips.debug >= DEBUG_SYSCALLS)
+                mipsDebugOut("FCNTL " + mips.num + " " + fd + " " +
+                    (JSMIPS.rconsts[cmd]||cmd) + " " +
+                    a + " => " + r);
+            return r;
+        }
+
+        mipsDebugOut("Unsupported fcntl " + cmd.toString(16));
+        return -JSMIPS.ENOTSUP;
+    }
+    syscalls[JSMIPS.NR_fcntl64] = sys_fcntl64;
+
     // clock_gettime(4263)
     function sys_clock_gettime(mips, clk_id, tp) {
         // FIXME: Just ignoring the clock ID
@@ -1896,7 +1943,6 @@ var JSMIPS = (function(JSMIPS) {
     syscalls[JSMIPS.NR_uname] = sys_stub; // uname (FIXME)
     syscalls[JSMIPS.NR_rt_sigaction] = sys_stub;
     syscalls[JSMIPS.NR_rt_sigprocmask] = sys_stub;
-    syscalls[JSMIPS.NR_fcntl64] = sys_stub; // (FIXME)
     syscalls[JSMIPS.NR_set_tid_address] = sys_stub;
     syscalls[JSMIPS.NR_set_thread_area] = sys_stub;
 

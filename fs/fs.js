@@ -2726,6 +2726,7 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
     // Load out args and envs
     var topaddr = 0xFFFFFFFC;
     var i;
+    this.mem.set(topaddr, 0);
     for (i = 0; i < args.length; i++) {
         var arg = args[i];
         topaddr -= arg.length + 1;
@@ -2751,7 +2752,7 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
     this.mem.set(topaddr, 0);
     for (i = envs.length - 1; i >= 0; i--) {
         topaddr -= 4;
-        this.mem.set(topaddr, args[i]);
+        this.mem.set(topaddr, envs[i]);
     }
     topaddr -= 4;
     this.mem.set(topaddr, 0);
@@ -3060,6 +3061,14 @@ function sys_stat64(mips, pathname, statbuf) {
     return 0;
 }
 JSMIPS.syscalls[JSMIPS.NR_stat64] = sys_stat64;
+
+
+// fcntls
+
+JSMIPS.fcntls[JSMIPS.F_SETFD] = function(mips, fd, cmd, a) {
+    // Sure, have whatever flags you want!
+    return 0;
+};
 
 return JSMIPS;
 })(typeof JSMIPS === "undefined" ? {} : JSMIPS);

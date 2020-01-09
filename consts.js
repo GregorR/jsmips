@@ -39,6 +39,9 @@ var JSMIPS = (function(JSMIPS) {
         ERANGE: 34,
         ENOTSUP: 122,
 
+        // fcntl.h
+        F_SETFD: 2,
+
         // ioctl.h
         _IOC: _IOC,
         TCGETS: 0x540D,
@@ -85,8 +88,20 @@ var JSMIPS = (function(JSMIPS) {
         NR_exit_group: 4246,
     };
 
-    for (var k in toAdd)
-        JSMIPS[k] = toAdd[k];
+    /**
+     * Reverse constants, for debugging
+     * @memberof JSMIPS
+     */
+    var rconsts = JSMIPS.rconsts = {};
+
+    for (var k in toAdd) {
+        var v = toAdd[k];
+        JSMIPS[k] = v;
+        if (v in rconsts)
+            rconsts[v] += "|" + k;
+        else
+            rconsts[v] = k;
+    }
 
     return JSMIPS;
 })(typeof JSMIPS === "undefined" ? {} : JSMIPS);
