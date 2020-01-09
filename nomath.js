@@ -62,9 +62,12 @@ var JSMIPS = (function(JSMIPS) {
 
     function add64(x, y) {
         var x1y1 = x[1] + y[1];
-        if (x1y1 > 0xFFFFFFFF) x1y1 -= 0x100000000;
+        if (x1y1 > 0xFFFFFFFF) {
+            x1y1 -= 0x100000000;
+            x = [x[0]+1, x[1]];
+        }
 
-        if (x[0] == 0 && y[0] == 0) {
+        if (x[0] === 0 && y[0] === 0) {
             return [0, x1y1];
 
         } else {
