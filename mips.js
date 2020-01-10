@@ -336,7 +336,8 @@ var JSMIPS = (function(JSMIPS) {
 
                 if (!(callnum in syscalls)) {
                     mipsDebugOut("Unsupported syscall " + callnum + " at " + opc.toString(16) + "\n");
-                    this.stop();
+                    this.regs[2] = -JSMIPS.ENOTSUP;
+                    this.regs[7] = 0;
 
                 } else {
                     var r = syscalls[callnum](this, a, b, c);
@@ -1879,6 +1880,29 @@ var JSMIPS = (function(JSMIPS) {
     }
     syscalls[JSMIPS.NR_wait4] = sys_wait4;
 
+    // uname(4122)
+    function sys_uname(mips, buf) {
+        /*
+         * struct utsname {
+         *  char sysname[];    / * Operating system name (e.g., "Linux") * /
+         *  char nodename[];   / * Name within "some implementation-defined network" * /
+         *  char release[];    / * Operating system release (e.g., "2.6.28") * /
+         *  char version[];    / * Operating system version * /
+         *  char machine[];    / * Hardware identifier * /
+         *  char domainname[]; / * NIS or YP domain name * /
+         * };
+         * Each field is 65 bytes
+         */
+        mips.mem.setstr(buf,        "JSMIPS");
+        mips.mem.setstr(buf+65,     "JSMIPS");
+        mips.mem.setstr(buf+65*2,   "3.5");
+        mips.mem.setstr(buf+65*3,   "JSMIPS");
+        mips.mem.setstr(buf+65*4,   "JSMIPS");
+        mips.mem.setstr(buf+65*5,   "jsmips");
+        return 0;
+    }
+    JSMIPS.syscalls[JSMIPS.NR_uname] = sys_uname;
+
     // writev(4146)
     function sys_writev(mips, fd, iov, iovcnt) {
         // We just do writev in terms of write(4004)
@@ -1956,7 +1980,6 @@ var JSMIPS = (function(JSMIPS) {
         return 0;
     }
     syscalls[JSMIPS.NR_kill] = sys_stub; // kill (FIXME?)
-    syscalls[JSMIPS.NR_uname] = sys_stub; // uname (FIXME)
     syscalls[JSMIPS.NR_rt_sigaction] = sys_stub;
     syscalls[JSMIPS.NR_rt_sigprocmask] = sys_stub;
     syscalls[JSMIPS.NR_set_tid_address] = sys_stub;

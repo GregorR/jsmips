@@ -270,6 +270,7 @@ JSMIPS.MIPS.prototype.open = function(pathname, flags, mode) {
     } catch (err) {
         return fsErr(err);
     }
+    stream.jsmipsCt = 1;
 
     // Find an open fd
     var ret = -1;
@@ -335,7 +336,7 @@ function sys_close(mips, fd) {
         return -JSMIPS.EBADF;
 
     var stream = mips.fds[fd].stream;
-    if (stream.stream_ops.close)
+    if (--stream.jsmipsCt <= 0 && stream.stream_ops.close)
         stream.stream_ops.close(stream);
 
     mips.fds[fd] = null;
@@ -352,14 +353,25 @@ JSMIPS.MIPS.prototype.dup = function(fd) {
         return -JSMIPS.EBADF;
     fd = this.fds[fd];
 
-    // emscripten's FS module doesn't support this at all...
-    var ret = this.open(fd.stream.path, FS.flagsToPermissionString(fd.stream.flags));
-    if (ret < 0) return ret;
+    // Find a free fd
+    var nfd;
+    for (nfd = 0; nfd < this.fds.length; nfd++) {
+        if (!this.fds[nfd])
+            break;
+    }
+    if (nfd >= this.fds.length)
+        this.fds.push(null);
 
-    // Keep the position
-    var retFd = this.fds[ret];
-    retFd.position = fd.position;
-    return ret;
+    // Set it up
+    this.fds[nfd] = {
+        stream: fd.stream,
+        position: fd.position
+    };
+
+    // Increment its counter
+    fd.stream.jsmipsCt++;
+
+    return nfd;
 }
 
 // dup(4041)
@@ -368,6 +380,94 @@ function sys_dup(mips, fd) {
 }
 JSMIPS.syscalls[JSMIPS.NR_dup] = sys_dup;
 
+// pipe(4042)
+function sys_pipe(mips, pipefd) {
+    // find two open fd slots
+    var pin, pout, i;
+    for (i = 0; i < mips.fds.length; i++) {
+        if (!mips.fds[i])
+            break;
+    }
+    pin = i;
+    for (i++; i < mips.fds.length; i++) {
+        if (!mips.fds[i])
+            break;
+    }
+    pout = i;
+
+    // Make sure the slots actually exist
+    while (pout >= mips.fds.length)
+        mips.fds.push(null);
+
+    // And open them
+    var pbuffer = [];
+    var ub = {};
+
+    mips.fds[pin] = {
+        stream: {
+            stream_ops: {
+                read: function(stream, buffer, offset, length, position) {
+                    if (pbuffer.length === 0)
+                        return ub;
+
+                    if (length > pbuffer.length)
+                        length = pbuffer.length;
+
+                    for (var i = 0; i < length; i++) {
+                        var x = pbuffer.shift();
+                        if (x === -1) { // EOF
+                            length = i;
+                            if (i !== 0)
+                                pbuffer.unshift(-1);
+                            break;
+                        }
+                        buffer[offset+i] = x;
+                    }
+
+                    return length;
+                }
+            },
+            jsmipsCt: 1
+        },
+        position: 0
+    };
+
+    mips.fds[pout] = {
+        stream: {
+            stream_ops: {
+                write: function(stream, buffer, offset, length, position, canOwn) {
+                    for (var i = 0; i < length; i++)
+                        pbuffer.push(buffer[offset+i]);
+
+                    if (ub.unblock) {
+                        var oub = ub;
+                        ub = {};
+                        oub.unblock();
+                    }
+                },
+
+                close: function() {
+                    pbuffer.push(-1);
+                    if (ub.unblock) {
+                        var oub = ub;
+                        ub = {};
+                        oub.unblock();
+                    }
+                }
+            },
+
+            jsmipsCt: 1
+        },
+        position: 0
+    };
+
+    // Write them out
+    mips.mem.set(pipefd, pin);
+    mips.mem.set(pipefd+4, pout);
+    return 0;
+}
+JSMIPS.syscalls[JSMIPS.NR_pipe] = sys_pipe;
+
 // dup2(4063)
 function sys_dup2(mips, fd1, fd2) {
     // Dup it first
@@ -375,9 +475,9 @@ function sys_dup2(mips, fd1, fd2) {
     if (ret < 0) return ret;
 
     // Put it where it belongs
-    if (mips.fds[fd2])
-        sys_close(mips, fd2);
     if (ret !== fd2) {
+        if (mips.fds[fd2])
+            sys_close(mips, fd2);
         while (mips.fds.length <= fd2)
             mips.fds.push(null);
         mips.fds[fd2] = mips.fds[ret];
@@ -423,6 +523,27 @@ function sys_readlink(mips, pathname, buf, bufsiz) {
     return target.length;
 }
 JSMIPS.syscalls[JSMIPS.NR_readlink] = sys_readlink;
+
+// llseek(4140)
+function sys_llseek(mips, fd, offset_high, offset_low) {
+    var result = mips.regs[7];
+    var whence = mips.regs[8];
+
+    if (!mips.fds[fd])
+        return -JSMIPS.EBADF;
+    fd = mips.fds[fd];
+
+    var newoff;
+    try {
+        newoff = FD.llseek(fd.stream, (offset_high<<32)|offset_low, whence);
+    } catch (err) {
+        return fsErr(err);
+    }
+
+    mips.mem.setd(result, newoff);
+    return 0;
+}
+JSMIPS.syscalls[JSMIPS.NR_llseek] = sys_llseek;
 
 // poll(4188)
 function sys_poll(mips, fds, nfds, timeout) {
