@@ -757,6 +757,12 @@ var JSMIPS = (function(JSMIPS) {
 
             case 0x30: // lwc0
             case 0x31: // lwc1
+            {
+                // no coproc
+                this.regs[2] = -1;
+                break;
+            }
+
             case 0x38: // swc0
             case 0x39: // swc1
             {
@@ -1309,6 +1315,10 @@ var JSMIPS = (function(JSMIPS) {
 
             case 0x30: // lwc0
             case 0x31: // lwc1
+            {
+                return "regs[2] = -1; ";
+            }
+
             case 0x38: // swc0
             case 0x39: // swc1
             {
