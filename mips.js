@@ -1955,8 +1955,8 @@ var JSMIPS = (function(JSMIPS) {
 
     ioctls[JSMIPS.TIOCGWINSZ] = function(mips, fd, r, winsz) {
         // It's... 80x25. Yeah. Sure.
-        mips.mem.seth(winsz, 80);
-        mips.mem.seth(winsz+2, 25);
+        mips.mem.seth(winsz, 25);
+        mips.mem.seth(winsz+2, 80);
         return 0;
     };
 
