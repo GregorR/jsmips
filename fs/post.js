@@ -287,7 +287,40 @@ JSMIPS.MIPS.prototype.open = function(pathname, flags, mode) {
     }
 
     this.fds[ret] = {stream: stream, position: stream.position};
+
+    if (flags & JSMIPS.O_DIRECTORY) {
+        // Opening a directory
+        return opendir(this, ret, stream);
+    }
+
     return ret;
+}
+
+/**
+ * opendir. Really just part of open, don't call this directly. Adds dirContent
+ * to the stream.
+ *
+ * @private
+ * @param {JSMIPS.MIPS} mips    The machine
+ * @param {int} fd              File descriptor
+ * @param {Object} stream       Emscripten FD stream
+ */
+function opendir(mips, fd, stream) {
+    var path = stream.path;
+    if (!stream.node.isFolder)
+        return -JSMIPS.ENOTDIR;
+
+    // Just preload into a buffer
+    stream.dirContent = [];
+    FS.readdir(path).forEach(function(name) {
+        var j = FS.stat(path + "/" + name);
+        stream.dirContent.push({
+            ino: j.ino,
+            type: j.mode,
+            name: name
+        });
+    });
+    return fd;
 }
 
 // open(4005)
@@ -413,14 +446,17 @@ function sys_getcwd(mips, buf, size) {
 }
 JSMIPS.syscalls[JSMIPS.NR_getcwd] = sys_getcwd;
 
-// stat64(4213)
-function sys_stat64(mips, pathname, statbuf) {
+/**
+ * Generic frontend for stat and lstat
+ * @private
+ */
+function multistat(mips, mode, pathname, statbuf) {
     pathname = mips.mem.getstr(pathname);
     if (pathname.length && pathname[0] !== "/") pathname = mips.cwd + "/" + pathname;
 
     var j;
     try {
-        j = FS.stat(pathname);
+        j = FS[mode](pathname);
     } catch (err) {
         return fsErr(err);
     }
@@ -475,7 +511,72 @@ function sys_stat64(mips, pathname, statbuf) {
 
     return 0;
 }
+
+// stat64(4213)
+function sys_stat64(mips, pathname, statbuf) {
+    return multistat(mips, "stat", pathname, statbuf);
+}
 JSMIPS.syscalls[JSMIPS.NR_stat64] = sys_stat64;
+
+// lstat64(4214)
+function sys_lstat64(mips, pathname, statbuf) {
+    return multistat(mips, "lstat", pathname, statbuf);
+}
+JSMIPS.syscalls[JSMIPS.NR_lstat64] = sys_lstat64;
+
+// getdents64(4219)
+function sys_getdents64(mips, fd, dirp, count) {
+    if (!mips.fds[fd])
+        return -JSMIPS.EBADF;
+    fd = mips.fds[fd];
+
+    // Make sure it's a directory
+    if (!fd.stream.dirContent)
+        return -JSMIPS.ENOTDIR;
+
+    /*
+     * struct linux_dirent64 {
+     *  ino64_t        d_ino;    / * 64-bit inode number * /
+     *  off64_t        d_off;    / * 64-bit offset to next structure * /
+     *  unsigned short d_reclen; / * Size of this dirent * /
+     *  unsigned char  d_type;   / * File type * /
+     *  char           d_name[]; / * Filename (null-terminated) * /
+     * }
+     */
+
+    // Put out as many records as fit
+    var dirStart = dirp;
+    var dirEnd = dirp + count;
+    var ri;
+    for (ri = fd.position; ri < fd.stream.dirContent.length && dirp < dirEnd; ri++) {
+        var ent = fd.stream.dirContent[ri];
+
+        // make room
+        var deLen = (19 /*d_ino...d_type*/ + ent.name.length /*d_name*/ + 4 /*null term + padding*/) >>> 2 << 2;
+        var deEnd = dirp + deLen;
+        if (deEnd > dirEnd)
+            break;
+
+        // fill it in
+        mips.mem.setd(dirp,         ent.ino);
+        mips.mem.setd(dirp+8,       deLen); // FIXME: This can't be right...
+        mips.mem.seth(dirp+16,      deLen);
+        mips.mem.setb(dirp+18,      1); // FIXME: Map the type
+        mips.mem.setstr(dirp+19,    ent.name);
+
+        // and step
+        dirp += deLen;
+    }
+    fd.position = ri;
+
+    if (dirp === dirStart) {
+        // I couldn't even fit one result in your lousy buffer!
+        return -JSMIPS.EINVAL;
+    }
+
+    return dirp - dirStart;
+}
+JSMIPS.syscalls[JSMIPS.NR_getdents64] = sys_getdents64;
 
 
 // fcntls
