@@ -368,8 +368,9 @@ var JSMIPS = (function(JSMIPS) {
                 break;
             }
 
-            case 0x0F: // ????
+            case 0x0F: // sync
             {
+                // No multicore, no threads, no sync
                 break;
             }
 
@@ -631,6 +632,7 @@ var JSMIPS = (function(JSMIPS) {
             case 0x24: // lbu rt,imm(rs)
             case 0x25: // lhu rt,imm(rs)
             case 0x26: // lwr rt,imm(rs)
+            case 0x30: // ll rt,imm(rs)
             {
                 // general load-word
                 var word = this.regs[rs] + simm;
@@ -674,6 +676,7 @@ var JSMIPS = (function(JSMIPS) {
                     }
 
                     case 0x23: // lw
+                    case 0x30: // ll (trivial with no threads)
                     {
                         val = dat;
                         break;
@@ -698,6 +701,7 @@ var JSMIPS = (function(JSMIPS) {
             case 0x2A: // swl rt,imm(rs)
             case 0x2B: // sw rt,imm(rs)
             case 0x2E: // swr rt,imm(rs)
+            case 0x38: // sc rt,imm(rs)
             {
                 // store word. Similar, but not the same
                 var word = this.regs[rs] + simm;
@@ -749,21 +753,20 @@ var JSMIPS = (function(JSMIPS) {
                         dat |= (this.regs[rt] << ((3-subword)<<3));
                         break;
                     }
+
+                    case 0x38: // sc (always succeeds)
+                    {
+                        dat = this.regs[rt];
+                        this.regs[rt] = 1;
+                        break;
+                    }
                 }
 
                 this.mem.set(word, dat);
                 break;
             }
 
-            case 0x30: // lwc0
             case 0x31: // lwc1
-            {
-                // no coproc
-                this.regs[2] = -1;
-                break;
-            }
-
-            case 0x38: // swc0
             case 0x39: // swc1
             {
                 // no coproc
@@ -1315,14 +1318,10 @@ var JSMIPS = (function(JSMIPS) {
 
             case 0x30: // lwc0
             case 0x31: // lwc1
-            {
-                return "regs[2] = -1; ";
-            }
-
             case 0x38: // swc0
             case 0x39: // swc1
             {
-                return "";
+                return false;
             }
 
             default:
