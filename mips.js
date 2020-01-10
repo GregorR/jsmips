@@ -964,7 +964,7 @@ var JSMIPS = (function(JSMIPS) {
                 return false;
             }
 
-            case 0x0F: // ???
+            case 0x0F: // sync
             {
                 return "";
             }
@@ -1233,6 +1233,7 @@ var JSMIPS = (function(JSMIPS) {
             case 0x23: // lw rt,imm(rs)
             case 0x24: // lbu rt,imm(rs)
             case 0x25: // lhu rt,imm(rs)
+            case 0x30: // ll rt,imm(rs)
             {
                 // general load-word
                 var code = "var word = regs[" + rs + "] + " + simm + ";" +
@@ -1265,6 +1266,7 @@ var JSMIPS = (function(JSMIPS) {
                     }
 
                     case 0x23: // lw
+                    case 0x30: // ll
                     {
                         code += "val = dat;";
                         break;
@@ -1278,6 +1280,7 @@ var JSMIPS = (function(JSMIPS) {
             case 0x28: // sb rt,imm(rs)
             case 0x29: // sh rt,imm(rs)
             case 0x2B: // sw rt,imm(rs)
+            case 0x38: // sc rt,imm(rs)
             {
                 // store word. Similar, but not the same
                 var code = "var word = regs[" + rs + "] + " + simm + ";" +
@@ -1305,9 +1308,15 @@ var JSMIPS = (function(JSMIPS) {
                         break;
                     }
 
-                    default: // sw
+                    case 0x2B: // sw
                     {
                         code += "var dat = regs[" + rt + "];";
+                        break;
+                    }
+
+                    case 0x38: // sc
+                    {
+                        code += "var dat = regs[" + rt + "]; regs[" + rt + "] = 1;";
                         break;
                     }
                 }
@@ -1316,9 +1325,7 @@ var JSMIPS = (function(JSMIPS) {
                 return code;
             }
 
-            case 0x30: // lwc0
             case 0x31: // lwc1
-            case 0x38: // swc0
             case 0x39: // swc1
             {
                 return false;
