@@ -113,7 +113,7 @@ JSMIPS = (function(JSMIPS) {
         FS.registerDevice(devID, devOps);
 
         // And a device file
-        var tty = "/tty" + this.num;
+        var tty = "/dev/ttyx" + this.num;
         FS.mkdev(tty, 0777, devID);
 
         // Then open it
