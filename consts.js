@@ -55,6 +55,7 @@ var JSMIPS = (function(JSMIPS) {
         O_PATH: 010000000,
         O_ACCMODE: 010000003,
         F_SETFD: 2,
+        F_DUPFD_CLOEXEC: 1030,
 
         // ioctl.h
         _IOC: _IOC,

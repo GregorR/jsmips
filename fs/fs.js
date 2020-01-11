@@ -2737,6 +2737,14 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
 
     }
 
+    // Close any cloexec fds
+    for (var fd = 0; fd < this.fds.length; fd++) {
+        if (this.fds[fd] && this.fds[fd].cloexec) {
+            console.log("Cloexec " + fd);
+            sys_close(this, fd);
+        }
+    }
+
     // Load the ELF
     this.loadELF(file);
 
@@ -2950,18 +2958,18 @@ JSMIPS.syscalls[JSMIPS.NR_close] = sys_close;
  * dup
  * @private
  */
-JSMIPS.MIPS.prototype.dup = function(fd) {
+JSMIPS.MIPS.prototype.dup = function(fd, min) {
     if (!this.fds[fd])
         return -JSMIPS.EBADF;
     fd = this.fds[fd];
 
     // Find a free fd
-    var nfd;
-    for (nfd = 0; nfd < this.fds.length; nfd++) {
+    var nfd = min||0;
+    for (nfd = min; nfd < this.fds.length; nfd++) {
         if (!this.fds[nfd])
             break;
     }
-    if (nfd >= this.fds.length)
+    while (nfd >= this.fds.length)
         this.fds.push(null);
 
     // Set it up
@@ -3308,6 +3316,13 @@ JSMIPS.syscalls[JSMIPS.NR_getdents64] = sys_getdents64;
 JSMIPS.fcntls[JSMIPS.F_SETFD] = function(mips, fd, cmd, a) {
     // Sure, have whatever flags you want!
     return 0;
+};
+
+JSMIPS.fcntls[JSMIPS.F_DUPFD_CLOEXEC] = function(mips, fd, cmd, min) {
+    // FIXME: No support for CLOEXEC
+    var ret = mips.dup(fd, min);
+    mips.fds[ret].cloexec = true;
+    return ret;
 };
 
 return JSMIPS;
