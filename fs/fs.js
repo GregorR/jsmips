@@ -2739,10 +2739,8 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
 
     // Close any cloexec fds
     for (var fd = 0; fd < this.fds.length; fd++) {
-        if (this.fds[fd] && this.fds[fd].cloexec) {
-            console.log("Cloexec " + fd);
+        if (this.fds[fd] && this.fds[fd].cloexec)
             sys_close(this, fd);
-        }
     }
 
     // Load the ELF
