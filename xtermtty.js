@@ -109,11 +109,11 @@ JSMIPS = (function(JSMIPS) {
         };
 
         // Make a device for this terminal
-        var devID = FS.makedev(4, this.num);
+        var devID = FS.makedev(4, this.pid);
         FS.registerDevice(devID, devOps);
 
         // And a device file
-        var tty = "/dev/ttyx" + this.num;
+        var tty = "/dev/ttyx" + this.pid;
         FS.mkdev(tty, 0777, devID);
 
         // Then open it

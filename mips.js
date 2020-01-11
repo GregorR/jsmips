@@ -42,7 +42,7 @@ var JSMIPS = (function(JSMIPS) {
          * @private
          * @type {int}
          */
-        this.num = pid;
+        this.pid = pid;
 
         /**
          * The parent of this process, or null if it is parentless or orphaned
@@ -342,7 +342,7 @@ var JSMIPS = (function(JSMIPS) {
                 } else {
                     var r = syscalls[callnum](this, a, b, c);
                     if (this.debug >= DEBUG_SYSCALLS)
-                        mipsDebugOut("SYSCALL " + this.num + " " +
+                        mipsDebugOut("SYSCALL " + this.pid + " " +
                             (JSMIPS.rconsts[callnum]||callnum) + " " +
                             a + " " + b + " " + c + " => " +
                             r);
@@ -1349,10 +1349,10 @@ var JSMIPS = (function(JSMIPS) {
 
         // Inform the parent
         if (this.pproc) {
-            delete this.pproc.children[this.num];
-            this.pproc.zombies[this.num] = this;
+            delete this.pproc.children[this.pid];
+            this.pproc.zombies[this.pid] = this;
         } else {
-            mipses[this.num] = null;
+            mipses[this.pid] = null;
         }
 
         // Get rid of any remaining li'l zombies
@@ -1719,7 +1719,7 @@ var JSMIPS = (function(JSMIPS) {
 
         // the parent of that process is this process
         nmips.pproc = mips;
-        mips.children[nmips.num] = nmips;
+        mips.children[nmips.pid] = nmips;
 
         // Copy in the registers
         nmips.regs = mips.regs.slice(0);
@@ -1744,7 +1744,7 @@ var JSMIPS = (function(JSMIPS) {
         nmips.run();
 
         // And into the old one
-        return nmips.num;
+        return nmips.pid;
     }
     syscalls[JSMIPS.NR_fork] = sys_fork;
 
@@ -1759,7 +1759,7 @@ var JSMIPS = (function(JSMIPS) {
 
     // getpid(4020)
     function sys_getpid(mips) {
-        return mips.num;
+        return mips.pid;
     }
     syscalls[JSMIPS.NR_getpid] = sys_getpid;
     syscalls[JSMIPS.NR_getpgid] = sys_getpid;
@@ -1783,9 +1783,9 @@ var JSMIPS = (function(JSMIPS) {
     // setpgid(4057)
     function sys_setpgid(mips, pid, pgid) {
         if (pid === 0)
-            pid = mips.num;
+            pid = mips.pid;
         if (pgid === 0)
-            pgid = mips.num;
+            pgid = mips.pid;
         if (pid !== pgid)
             return -JSMIPS.ENOTSUP;
         return 0;
@@ -1797,7 +1797,7 @@ var JSMIPS = (function(JSMIPS) {
         if (request in ioctls) {
             var r = ioctls[request](mips, fd, request, a);
             if (mips.debug >= DEBUG_SYSCALLS)
-                mipsDebugOut("IOCTL " + mips.num + " " + fd + " " +
+                mipsDebugOut("IOCTL " + mips.pid + " " + fd + " " +
                     (JSMIPS.rconsts[request]||request) + " " +
                     a + " => " + r);
             return r;
@@ -1813,7 +1813,7 @@ var JSMIPS = (function(JSMIPS) {
         if (mips.pproc === null)
             return 1;
         else
-            return mips.pproc.num;
+            return mips.pproc.pid;
     }
     syscalls[JSMIPS.NR_getppid] = sys_getppid;
 
@@ -1954,7 +1954,7 @@ var JSMIPS = (function(JSMIPS) {
         if (cmd in fcntls) {
             var r = fcntls[cmd](mips, fd, cmd, a);
             if (mips.debug >= DEBUG_SYSCALLS)
-                mipsDebugOut("FCNTL " + mips.num + " " + fd + " " +
+                mipsDebugOut("FCNTL " + mips.pid + " " + fd + " " +
                     (JSMIPS.rconsts[cmd]||cmd) + " " +
                     a + " => " + r);
             return r;
@@ -2001,7 +2001,7 @@ var JSMIPS = (function(JSMIPS) {
 
     ioctls[JSMIPS.TIOCSPGRP] = function(mips, fd, r, pgrp) {
         pgrp = mips.mem.get(pgrp);
-        if (pgrp !== mips.num) {
+        if (pgrp !== mips.pid) {
             // Yeah, not really implemented
             return -JSMIPS.ENOTSUP;
         }
@@ -2010,7 +2010,7 @@ var JSMIPS = (function(JSMIPS) {
 
     ioctls[JSMIPS.TIOCGPGRP] = function(mips, fd, r, t) {
         // We are always our own controlling process
-        mips.mem.set(t, mips.num);
+        mips.mem.set(t, mips.pid);
         return 0;
     };
 
