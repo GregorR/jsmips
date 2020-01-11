@@ -101,6 +101,7 @@ var JSMIPS = (function(JSMIPS) {
         NR_getdents64: 4219,
         NR_fcntl64: 4220,
         NR_gettid: 4222,
+        NR_sendfile64: 4237,
         NR_set_tid_address: 4252,
         NR_clock_gettime: 4263,
         NR_set_thread_area: 4283,

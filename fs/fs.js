@@ -3310,6 +3310,54 @@ function sys_getdents64(mips, fd, dirp, count) {
 }
 JSMIPS.syscalls[JSMIPS.NR_getdents64] = sys_getdents64;
 
+// sendfile64(4237)
+function sys_sendfile64(mips, out_fd, in_fd, offset) {
+    var count = mips.regs[7];
+
+    if (!mips.fds[out_fd])
+        return -JSMIPS.EBADF;
+    out_fd = mips.fds[out_fd];
+    if (!mips.fds[in_fd])
+        return -JSMIPS.EBADF;
+    in_fd = mips.fds[in_fd];
+
+    var position = in_fd.position;
+    if (offset)
+        position = mips.mem.getd(offset);
+
+    // Read it in
+    var buf = new Uint8Array(count);
+    var rd;
+    try {
+        rd = in_fd.stream.stream_ops.read(in_fd.stream, buf, 0, count, position);
+    } catch (err) {
+        return fsErr(err);
+    }
+    if (typeof rd === "object")
+        return rd;
+    position += rd;
+
+    // And write it out
+    var wr;
+    try {
+        wr = out_fd.stream.stream_ops.write(out_fd.stream, buf, 0, rd, out_fd.position, true);
+    } catch (err) {
+        return fsErr(err);
+    }
+    if (typeof wr === "object")
+        return wr;
+    out_fd.position += wr;
+
+    // Update offset as appropriate
+    if (offset) {
+        mips.mem.setd(offset, position);
+    } else {
+        in_fd.position = position;
+    }
+
+    return wr;
+}
+JSMIPS.syscalls[JSMIPS.NR_sendfile64] = sys_sendfile64;
 
 // fcntls
 
