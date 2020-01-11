@@ -389,7 +389,7 @@ function sys_dup(mips, fd) {
 JSMIPS.syscalls[JSMIPS.NR_dup] = sys_dup;
 
 // pipe(4042)
-function sys_pipe(mips, pipefd) {
+function sys_pipe(mips) {
     // find two open fd slots
     var pin, pout, i;
     for (i = 0; i < mips.fds.length; i++) {
@@ -452,6 +452,8 @@ function sys_pipe(mips, pipefd) {
                         ub = {};
                         oub.unblock();
                     }
+
+                    return length;
                 },
 
                 close: function() {
@@ -469,10 +471,9 @@ function sys_pipe(mips, pipefd) {
         position: 0
     };
 
-    // Write them out
-    mips.mem.set(pipefd, pin);
-    mips.mem.set(pipefd+4, pout);
-    return 0;
+    // Pipe uses a different style to write things back out
+    mips.regs[3] = pout;
+    return pin;
 }
 JSMIPS.syscalls[JSMIPS.NR_pipe] = sys_pipe;
 
