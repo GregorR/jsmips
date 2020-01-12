@@ -664,7 +664,7 @@ var JSMIPS = (function(JSMIPS) {
                     {
                         var mask = 0xFF000000 >>> (subword<<3);
                         val = (dat & mask) >>> ((3-subword)<<3);
-                        if (opcode == 0x20 && (val & 0x80))
+                        if (opcode === 0x20 && (val & 0x80))
                             val |= 0xFFFFFF00;
                         break;
                     }
@@ -675,7 +675,7 @@ var JSMIPS = (function(JSMIPS) {
                         subword &= 0x02;
                         var mask = 0xFFFF0000 >>> (subword<<3);
                         val = (dat & mask) >>> ((2-subword)<<3);
-                        if (opcode == 0x21 && (val & 0x8000))
+                        if (opcode === 0x21 && (val & 0x8000))
                             val |= 0xFFFF0000;
                         break;
                     }
@@ -684,7 +684,7 @@ var JSMIPS = (function(JSMIPS) {
                     {
                         dat <<= subword<<3;
                         var mask = 0xFFFFFFFF >>> ((4-subword)<<3);
-                        if (subword == 0) mask = 0;
+                        if (subword === 0) mask = 0;
                         val = (this.regs[rt] & mask) | dat;
                         break;
                     }
@@ -694,13 +694,13 @@ var JSMIPS = (function(JSMIPS) {
                     {
                         val = dat;
                         break;
-                    }
+                    }   
 
                     case 0x25: // lwr
                     {
                         dat >>>= ((3-subword)<<3);
                         var mask = 0xFFFFFFFF << ((subword+1)<<3);
-                        if (subword == 3) mask = 0;
+                        if (subword === 3) mask = 0;
                         val = (this.regs[rt] & mask) | dat;
                         break;
                     }
@@ -1266,9 +1266,9 @@ var JSMIPS = (function(JSMIPS) {
                     case 0x24: // lbu
                     {
                         code += "var mask = 0xFF000000 >>> (subword<<3);" +
-                            "val = (dat & mask) >> ((3-subword)<<3);";
-                        if (opcode == 0x20)
-                            code += "if ((val & 0x80)) val |= 0xFFFFFF00;";
+                            "val = (dat & mask) >>> ((3-subword)<<3);";
+                        if (opcode === 0x20)
+                            code += "if (val & 0x80) val |= 0xFFFFFF00;";
                         break;
                     }
 
@@ -1277,9 +1277,9 @@ var JSMIPS = (function(JSMIPS) {
                     {
                         code += "subword &= 0x02;" +
                             "var mask = 0xFFFF0000 >>> (subword<<3);" +
-                            "val = (dat & mask) >> ((2-subword)<<3);";
-                        if (opcode == 0x21)
-                            code += "if ((val & 0x8000)) val |= 0xFFFF0000;";
+                            "val = (dat & mask) >>> ((2-subword)<<3);";
+                        if (opcode === 0x21)
+                            code += "if (val & 0x8000) val |= 0xFFFF0000;";
                         break;
                     }
 
@@ -1305,7 +1305,7 @@ var JSMIPS = (function(JSMIPS) {
                     "var subword = word & 0x03;" +
                     "word = word & 0xFFFFFFFC;";
 
-                if (opcode != 0x2B) code += "var dat = mips.mem.get(word);";
+                if (opcode !== 0x2B) code += "var dat = mips.mem.get(word);";
 
                 // update it
                 switch (opcode) {
