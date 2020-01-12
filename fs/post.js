@@ -91,6 +91,22 @@ JSMIPS.mipsstop.push(function(mips) {
     }
 });
 
+/**
+ * We avoid Emscripten's cwd, because each MIPS sim has its own, so use this to
+ * get absolute paths
+ */
+function absolute(mips, path) {
+    if (path.length === 0 || path[0] === "/")
+        return path;
+
+    path = mips.cwd + path;
+    try {
+        path = FS.lookupPath(path).path;
+    } catch (ex) {}
+
+    return path;
+}
+
 
 // syscalls
 
@@ -112,7 +128,12 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
 
     var file;
     if (typeof filename === "string") {
-        // Open the file (FIXME: Won't work if blocking is possible)
+        // Assert that it exists, in case of xhr
+        var ub = XHRFS.assert(filename);
+        if (ub)
+            return ub;
+
+        // Read the file (FIXME: Won't work if blocking is still possible)
         file = FS.readFile(filename, {encoding: "binary"});
 
         // FIXME: Script support, dynamic ELF, etc
@@ -266,16 +287,23 @@ JSMIPS.syscalls[JSMIPS.NR_write] = sys_write;
  * @return {int}                A positive file descriptor on success, negative errno on error
  */
 JSMIPS.MIPS.prototype.open = function(pathname, flags, mode) {
-    if (pathname.length && pathname[0] !== "/")
-        pathname = this.cwd + "/" + pathname;
+    pathname = absolute(this, pathname);
 
     var ps = FS.flagsToPermissionString(flags).replace("rw", "r+").replace("ww", "w");
     var stream;
+
+    // Open via XHRFS to auto-download
     try {
-        stream = FS.open(pathname, ps, mode);
+        stream = XHRFS.open(pathname, ps, mode);
     } catch (err) {
         return fsErr(err);
     }
+    if (stream.unblock) {
+        // Blocking request
+        return stream;
+    }
+
+    // Keep track of our counter so we can close it when we're done
     stream.jsmipsCt = 1;
 
     // Find an open fd
@@ -352,9 +380,7 @@ JSMIPS.syscalls[JSMIPS.NR_close] = sys_close;
 
 // unlink(4010)
 function sys_unlink(mips, pathname) {
-    pathname = mips.mem.getstr(pathname);
-    if (pathname.length && pathname[0] !== "/")
-        pathname = mips.cwd + "/" + pathname;
+    pathname = absolute(mips, mips.mem.getstr(pathname));
 
     try {
         FS.unlink(pathname);
@@ -513,9 +539,7 @@ JSMIPS.syscalls[JSMIPS.NR_dup2] = sys_dup2;
 // symlink(4083)
 function sys_symlink(mips, target, linkpath) {
     target = mips.mem.getstr(target);
-    linkpath = mips.mem.getstr(linkpath);
-    if (linkpath.length && linkpath[0] !== "/")
-        linkpath = mips.cwd + "/" + linkpath;
+    linkpath = absolute(mips, mips.mem.getstr(linkpath));
 
     try {
         FS.symlink(target, linkpath);
@@ -529,9 +553,7 @@ JSMIPS.syscalls[JSMIPS.NR_symlink] = sys_symlink;
 
 // readlink(4085)
 function sys_readlink(mips, pathname, buf, bufsiz) {
-    pathname = mips.mem.getstr(pathname);
-    if (pathname.length && pathname[0] !== "/")
-        pathname = mips.cwd + "/" + pathname;
+    pathname = absolute(mips, mips.mem.getstr(pathname));
 
     var target;
     try {
@@ -595,8 +617,11 @@ JSMIPS.syscalls[JSMIPS.NR_getcwd] = sys_getcwd;
  * @private
  */
 function multistat(mips, mode, pathname, statbuf) {
-    pathname = mips.mem.getstr(pathname);
-    if (pathname.length && pathname[0] !== "/") pathname = mips.cwd + "/" + pathname;
+    pathname = absolute(mips, mips.mem.getstr(pathname));
+
+    // Assert its existence
+    var ub = XHRFS.assert(pathname);
+    if (ub) return ub;
 
     var j;
     try {

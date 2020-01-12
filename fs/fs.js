@@ -2601,6 +2601,142 @@ mergeInto(LibraryManager.library, {
 });
 
 /*
+ * XHR-based backing store for Emscripten FS. Not implemented as an Emscripten
+ * FS module because Emscripten FS doesn't support blocking.
+ *
+ * Copyright (c) 2008-2010, 2020 Gregor Richards
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+var XHRFS = {
+    xhrMounts: {},
+    failures: {},
+
+    open: function(path, flags, mode) {
+        // Try just opening it
+        var ret = null, err;
+        try {
+            ret = FS.open(path, flags, mode);
+        } catch (ex) {
+            err = ex;
+        }
+        if (ret || !err) return ret;
+
+        // Check if we've already failed this request
+        if (path in XHRFS.failures)
+            throw err;
+
+        // Check if it falls under one of our XHR mounts
+        var root = null;
+        for (var mount in XHRFS.xhrMounts) {
+            if (path.startsWith(mount)) {
+                root = mount;
+                break;
+            }
+        }
+        if (!root) throw err;
+
+        // Start an XHR request for it
+        var ub = {unblock: true};
+        var target = XHRFS.xhrMounts[root] + path.slice(root.length);
+        var xhr = new XMLHttpRequest();
+        xhr.responseType = "arraybuffer";
+        xhr.open("GET", target, true);
+
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState !== 4) return;
+
+            function fail() {
+                XHRFS.failures[path] = true;
+                ub.unblock();
+            }
+
+            if (xhr.status === 404) {
+                // Wasn't found, so just fail
+                return fail();
+            }
+
+            // It was a directory if it ends with /
+            var isDirectory = /\/$/.test(xhr.responseURL);
+
+            if (xhr.status !== 200) {
+                // Only directories are allowed to fail
+                if (!isDirectory)
+                    return fail();
+            }
+
+            // The data is in, so move it into the real filesystem
+
+            // 1: Make the directory
+            var parts = path.split("/");
+            var soFar = "/";
+            for (var pi = 0; pi < parts.length - 1; pi++) {
+                var part = parts[pi];
+                if (part === "") continue;
+                soFar += part;
+                try {
+                    FS.mkdir(soFar);
+                } catch (ex) {};
+                soFar += "/";
+            }
+
+            // Then make and fill the file
+            var data = new Uint8Array(xhr.response);
+            try {
+                FS.writeFile(path, data);
+            } catch (err) {
+                return fail();
+            }
+
+            // And now we're ready, so unblock
+            ub.unblock();
+        };
+
+        xhr.send();
+        return ub;
+    },
+
+    assert: function(pathname) {
+        // Try to open it
+        var stream;
+        try {
+            stream = XHRFS.open(pathname, "r");
+        } catch (err) {
+            return null;
+        }
+
+        // If it's blocking, say so
+        if (stream.unblock)
+            return stream;
+
+        // Otherwise, close it
+        if (stream.stream_ops.close)
+            stream.stream_ops.close(stream);
+        return null;
+    },
+
+    mount: function(source, target) {
+        if (!/\/$/.test(source))
+            source += "/";
+        if (!/\/$/.test(target))
+            target += "/";
+        XHRFS.xhrMounts[target] = source;
+    }
+};
+
+JSMIPS.XHRFS = XHRFS;
+/*
  * Link between Emscripten's FS module and JSMIPS
  *
  * Copyright (c) 2008-2010, 2020 Gregor Richards
@@ -2693,6 +2829,22 @@ JSMIPS.mipsstop.push(function(mips) {
     }
 });
 
+/**
+ * We avoid Emscripten's cwd, because each MIPS sim has its own, so use this to
+ * get absolute paths
+ */
+function absolute(mips, path) {
+    if (path.length === 0 || path[0] === "/")
+        return path;
+
+    path = mips.cwd + path;
+    try {
+        path = FS.lookupPath(path).path;
+    } catch (ex) {}
+
+    return path;
+}
+
 
 // syscalls
 
@@ -2714,7 +2866,12 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
 
     var file;
     if (typeof filename === "string") {
-        // Open the file (FIXME: Won't work if blocking is possible)
+        // Assert that it exists, in case of xhr
+        var ub = XHRFS.assert(filename);
+        if (ub)
+            return ub;
+
+        // Read the file (FIXME: Won't work if blocking is still possible)
         file = FS.readFile(filename, {encoding: "binary"});
 
         // FIXME: Script support, dynamic ELF, etc
@@ -2868,16 +3025,23 @@ JSMIPS.syscalls[JSMIPS.NR_write] = sys_write;
  * @return {int}                A positive file descriptor on success, negative errno on error
  */
 JSMIPS.MIPS.prototype.open = function(pathname, flags, mode) {
-    if (pathname.length && pathname[0] !== "/")
-        pathname = this.cwd + "/" + pathname;
+    pathname = absolute(this, pathname);
 
     var ps = FS.flagsToPermissionString(flags).replace("rw", "r+").replace("ww", "w");
     var stream;
+
+    // Open via XHRFS to auto-download
     try {
-        stream = FS.open(pathname, ps, mode);
+        stream = XHRFS.open(pathname, ps, mode);
     } catch (err) {
         return fsErr(err);
     }
+    if (stream.unblock) {
+        // Blocking request
+        return stream;
+    }
+
+    // Keep track of our counter so we can close it when we're done
     stream.jsmipsCt = 1;
 
     // Find an open fd
@@ -2954,9 +3118,7 @@ JSMIPS.syscalls[JSMIPS.NR_close] = sys_close;
 
 // unlink(4010)
 function sys_unlink(mips, pathname) {
-    pathname = mips.mem.getstr(pathname);
-    if (pathname.length && pathname[0] !== "/")
-        pathname = mips.cwd + "/" + pathname;
+    pathname = absolute(mips, mips.mem.getstr(pathname));
 
     try {
         FS.unlink(pathname);
@@ -3115,9 +3277,7 @@ JSMIPS.syscalls[JSMIPS.NR_dup2] = sys_dup2;
 // symlink(4083)
 function sys_symlink(mips, target, linkpath) {
     target = mips.mem.getstr(target);
-    linkpath = mips.mem.getstr(linkpath);
-    if (linkpath.length && linkpath[0] !== "/")
-        linkpath = mips.cwd + "/" + linkpath;
+    linkpath = absolute(mips, mips.mem.getstr(linkpath));
 
     try {
         FS.symlink(target, linkpath);
@@ -3131,9 +3291,7 @@ JSMIPS.syscalls[JSMIPS.NR_symlink] = sys_symlink;
 
 // readlink(4085)
 function sys_readlink(mips, pathname, buf, bufsiz) {
-    pathname = mips.mem.getstr(pathname);
-    if (pathname.length && pathname[0] !== "/")
-        pathname = mips.cwd + "/" + pathname;
+    pathname = absolute(mips, mips.mem.getstr(pathname));
 
     var target;
     try {
@@ -3197,8 +3355,11 @@ JSMIPS.syscalls[JSMIPS.NR_getcwd] = sys_getcwd;
  * @private
  */
 function multistat(mips, mode, pathname, statbuf) {
-    pathname = mips.mem.getstr(pathname);
-    if (pathname.length && pathname[0] !== "/") pathname = mips.cwd + "/" + pathname;
+    pathname = absolute(mips, mips.mem.getstr(pathname));
+
+    // Assert its existence
+    var ub = XHRFS.assert(pathname);
+    if (ub) return ub;
 
     var j;
     try {

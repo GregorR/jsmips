@@ -20,5 +20,5 @@ dist/jsmips-noweb.js: $(JSMIPS_NOWEB_SRC)
 dist/jsmips.js: $(JSMIPS_SRC)
 	cat $(JSMIPS_SRC) | $(MINIFIER) | cat license.js - > $@
 
-fs/fs.js: fs/post.js
+fs/fs.js: fs/xhrfs.js fs/post.js
 	cd fs ; $(MAKE)
