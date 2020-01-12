@@ -17,13 +17,9 @@
  */
 
 var JSMIPS = (function(JSMIPS) {
-    function add32(x, y) {
-        var xy = x + y;
-        if (xy > 0xFFFFFFFF) xy -= 0x100000000;
-        return xy;
-    }
-    JSMIPS.add32 = add32;
-
+    /**
+     * Multiply two unsigned 32-bit numbers, producing [hi, lo]
+     */
     function mul32(x, y) {
         var x1 = x >>> 16;
         var x2 = x & 0xFFFF;
@@ -52,7 +48,7 @@ var JSMIPS = (function(JSMIPS) {
          *  cccc
          *   bbbb */
 
-        b = add64(b, [((c[0] & 0xFFFF) << 16)>>>0 + ((c[1] & 0xFFFF0000) >>> 16),
+        b = add64(b, [(((c[0] & 0xFFFF) << 16)>>>0) + ((c[1] & 0xFFFF0000) >>> 16),
                       ((c[1] & 0xFFFF) << 16)>>>0]);
         b = add64(b, [a[1], 0]);
 
@@ -60,6 +56,32 @@ var JSMIPS = (function(JSMIPS) {
     }
     JSMIPS.mul32 = mul32;
 
+    /**
+     * Multiply two signed 32-bit numbers, producing [hi, lo]
+     */
+    function muls32(x, y) {
+        var neg = false;
+        if (x < 0) {
+            x = -x;
+            neg = true;
+        }
+        if (y < 0) {
+            y = -y;
+            neg = !neg;
+        }
+
+        var res = mul32(x, y);
+
+        if (neg)
+            res = neg64(res);
+
+        return res;
+    }
+    JSMIPS.muls32 = muls32;
+
+    /**
+     * Add two 64-bit (in the form of [hi, lo]) numbers
+     */
     function add64(x, y) {
         var x1y1 = x[1] + y[1];
         if (x1y1 > 0xFFFFFFFF) {
@@ -78,11 +100,17 @@ var JSMIPS = (function(JSMIPS) {
     }
     JSMIPS.add64 = add64;
 
+    /**
+     * 64-bit subtract
+     */
     function sub64(x, y) {
         return add64(x, neg64(y));
     }
     JSMIPS.sub64 = sub64;
 
+    /**
+     * 64-bit negation
+     */
     function neg64(x) {
         return add64(
                 [(~(x[0]))>>>0, (~(x[1]))>>>0],

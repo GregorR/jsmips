@@ -2871,7 +2871,7 @@ JSMIPS.MIPS.prototype.open = function(pathname, flags, mode) {
     if (pathname.length && pathname[0] !== "/")
         pathname = this.cwd + "/" + pathname;
 
-    var ps = FS.flagsToPermissionString(flags).replace("rw", "r+");
+    var ps = FS.flagsToPermissionString(flags).replace("rw", "r+").replace("ww", "w");
     var stream;
     try {
         stream = FS.open(pathname, ps, mode);
@@ -2951,6 +2951,22 @@ function sys_close(mips, fd) {
     return 0;
 }
 JSMIPS.syscalls[JSMIPS.NR_close] = sys_close;
+
+// unlink(4010)
+function sys_unlink(mips, pathname) {
+    pathname = mips.mem.getstr(pathname);
+    if (pathname.length && pathname[0] !== "/")
+        pathname = mips.cwd + "/" + pathname;
+
+    try {
+        FS.unlink(pathname);
+    } catch (err) {
+        return fsErr(err);
+    }
+
+    return 0;
+}
+JSMIPS.syscalls[JSMIPS.NR_unlink] = sys_unlink;
 
 /**
  * dup
@@ -3273,6 +3289,11 @@ function sys_getdents64(mips, fd, dirp, count) {
      *  char           d_name[]; / * Filename (null-terminated) * /
      * }
      */
+
+    if (fd.position >= fd.stream.dirContent.length) {
+        // Nothing left to read!
+        return 0;
+    }
 
     // Put out as many records as fit
     var dirStart = dirp;

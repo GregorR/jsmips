@@ -207,7 +207,7 @@ var JSMIPS = (function(JSMIPS) {
             var op = opaddr[0].buf[opaddr[1]];
 
             if (this.debug >= DEBUG_STEPS)
-                mipsDebugOut("op " + opc.toString(16) + "\n");
+                mipsDebugOut("op " + opc.toString(16) + ": " + op.toString(16) + "\n");
 
             // Increment the program counter
             this.pc = this.npc;
@@ -1993,10 +1993,14 @@ var JSMIPS = (function(JSMIPS) {
     };
 
     ioctls[JSMIPS.TIOCGWINSZ] = function(mips, fd, r, winsz) {
+        /*
         // It's... 80x25. Yeah. Sure.
         mips.mem.seth(winsz, 25);
         mips.mem.seth(winsz+2, 80);
         return 0;
+        */
+        // There are no TTYs!
+        return -JSMIPS.ENOTTY;
     };
 
     ioctls[JSMIPS.TIOCSPGRP] = function(mips, fd, r, pgrp) {

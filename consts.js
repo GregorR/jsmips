@@ -38,6 +38,7 @@ var JSMIPS = (function(JSMIPS) {
         ENOMEM: 12,
         ENOTDIR: 20,
         EINVAL: 22,
+        ENOTTY: 25,
         ERANGE: 34,
         ENOTSUP: 122,
 
@@ -71,6 +72,7 @@ var JSMIPS = (function(JSMIPS) {
         NR_write: 4004,
         NR_open: 4005,
         NR_close: 4006,
+        NR_unlink: 4010,
         NR_execve: 4011,
         NR_getpid: 4020,
         NR_getuid: 4024,
