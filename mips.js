@@ -400,6 +400,15 @@ var JSMIPS = (function(JSMIPS) {
             }
 
             case 0x18: // mult rs,rt
+            {
+                var res = JSMIPS.muls32(this.regs[rs]>>0, this.regs[rt]>>0);
+
+                this.rhi = res[0];
+                this.rlo = res[1];
+
+                break;
+            }
+
             case 0x19: // multu rs,rt
             {
                 var res = JSMIPS.mul32(this.regs[rs], this.regs[rt]);
@@ -465,7 +474,7 @@ var JSMIPS = (function(JSMIPS) {
 
             case 0x2A: // slt rd,rs,rt
             {
-                if ((this.regs[rs])>>0 < (this.regs[rt])>>0) {
+                if (((this.regs[rs])>>0) < ((this.regs[rt])>>0)) {
                     this.regs[rd] = 1;
                 } else {
                     this.regs[rd] = 0;
@@ -529,10 +538,10 @@ var JSMIPS = (function(JSMIPS) {
                     link = this.pc + 4;
 
                 if (rt&1) { // bgez rs,target
-                    if ((this.regs[rs])>>0 >= 0) branch(link);
+                    if (((this.regs[rs])>>0) >= 0) branch(link);
 
                 } else { // bltz rs,target
-                    if ((this.regs[rs])>>0 < 0) branch(link);
+                    if (((this.regs[rs])>>0) < 0) branch(link);
 
                 }
                 break;
@@ -554,14 +563,14 @@ var JSMIPS = (function(JSMIPS) {
 
             case 0x06: // blez rs,target
             {
-                if ((this.regs[rs])>>0 <= 0)
+                if (((this.regs[rs])>>0) <= 0)
                     branch();
                 break;
             }
 
             case 0x07: // bgtz rs,target
             {
-                if ((this.regs[rs])>>0 > 0)
+                if (((this.regs[rs])>>0) > 0)
                     branch();
                 break;
             }
@@ -569,13 +578,13 @@ var JSMIPS = (function(JSMIPS) {
             case 0x08: // addi rt,rs,imm
             case 0x09: // addiu rt,rs,imm
             {
-                this.regs[rt] = this.regs[rs] + simm>>>0;
+                this.regs[rt] = this.regs[rs] + (simm>>>0);
                 break;
             }
 
             case 0x0A: // slti rt,rs,imm
             {
-                if ((this.regs[rs])>>0 < simm) {
+                if (((this.regs[rs])>>0) < simm) {
                     this.regs[rt] = 1;
                 } else {
                     this.regs[rt] = 0;
@@ -585,7 +594,7 @@ var JSMIPS = (function(JSMIPS) {
 
             case 0x0B: // sltiu rt,rs,imm
             {
-                if (this.regs[rs] < simm>>>0) {
+                if (this.regs[rs] < (simm>>>0)) {
                     this.regs[rt] = 1;
                 } else {
                     this.regs[rt] = 0;
@@ -1936,8 +1945,13 @@ var JSMIPS = (function(JSMIPS) {
     // mmap2(4210)
     function sys_mmap2(mips, addr, length, prot) {
         var flags = mips.regs[7];
-        var fd = mips.regs[8];
+        var fd = mips.regs[8]>>0;
         var pgoffset = mips.regs[9];
+
+        if (fd >= 0) {
+            // What, you wanted to map a /file/???
+            return -JSMIPS.ENOTSUP;
+        }
 
         // FIXME: This is not an even remotely correct implementation of mmap!
         length >>>= 12;
