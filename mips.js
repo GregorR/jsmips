@@ -175,19 +175,23 @@ var JSMIPS = (function(JSMIPS) {
             // Pull out the operation
             var opc = this.pc;
             var opaddr = this.mem.translate(opc);
+            if (opc === 0x436ef4) {
+                this.stop();
+                return;
+            }
 
             // Figure out if it's been jitted or precompiled
             if (!step && this.debug < DEBUG_NOJIT && this.npc === this.pc + 4) {
                 var jitfunc = false;
-                if (typeof(this.compiled) != "undefined" && this.compiled !== false) {
+                if (this.compiled) {
                     jitfunc = this.compiled;
 
                 } else {
-                    if (typeof(opaddr[0].jitfunc) == "undefined") {
+                    if (opaddr[0].jitfunc) {
+                        jitfunc = opaddr[0].jitfunc;
+                    } else {
                         jitfunc = this.jitize(opaddr[0].buf, opc - (opaddr[1]<<2));
                         opaddr[0].jitfunc = jitfunc;
-                    } else {
-                        jitfunc = opaddr[0].jitfunc;
                     }
 
                 }
@@ -514,11 +518,11 @@ var JSMIPS = (function(JSMIPS) {
         var imm  = (op & 0x0000FFFF);
         var simm;
         if (imm & 0x00008000) {
-            simm = -(0x00010000 - imm);
+            simm = (imm|0xFFFF0000)>>0;
         } else {
             simm = imm;
         }
-        /* REMEMBER: unsigned(simm) is NOT the same as imm; if simm < 0, the
+        /* REMEMBER: unsigned(simm) is NOT the same as imm; if simm < 0, then
          * unsigned(simm) > 0x0000FFFF */
         var thismips = this;
 
@@ -659,7 +663,7 @@ var JSMIPS = (function(JSMIPS) {
                     case 0x24: // lbu
                     {
                         var mask = 0xFF000000 >>> (subword<<3);
-                        val = (dat & mask) >> ((3-subword)<<3);
+                        val = (dat & mask) >>> ((3-subword)<<3);
                         if (opcode == 0x20 && (val & 0x80))
                             val |= 0xFFFFFF00;
                         break;
@@ -670,7 +674,7 @@ var JSMIPS = (function(JSMIPS) {
                     {
                         subword &= 0x02;
                         var mask = 0xFFFF0000 >>> (subword<<3);
-                        val = (dat & mask) >> ((2-subword)<<3);
+                        val = (dat & mask) >>> ((2-subword)<<3);
                         if (opcode == 0x21 && (val & 0x8000))
                             val |= 0xFFFF0000;
                         break;
@@ -835,7 +839,6 @@ var JSMIPS = (function(JSMIPS) {
     MIPS.prototype.jitize = function(page, baseaddr) {
         var i;
         var strfunc = "var res; var bc = 0;";
-        var fix = "";
 
         // get a direct reference to the registers
         strfunc += "var regs = mips.regs; ";
@@ -859,10 +862,8 @@ var JSMIPS = (function(JSMIPS) {
             var res = this.jitone(opc, page[i]);
 
             // perhaps end it
-            if (res === false) {
+            if (res === false)
                 res = "mips.pc = " + opc + "; mips.npc = " + (opc+4) + "; return false; ";
-
-            }
 
             strfunc += res;
         }
@@ -1000,9 +1001,16 @@ var JSMIPS = (function(JSMIPS) {
             }
 
             case 0x18: // mult rs,rt
+            {
+                return "res = JSMIPS.muls32(regs[" + rs + "]>>0, regs[" + rt + "]>>0); " +
+
+                    "mips.rhi = res[0]; " +
+                    "mips.rlo = res[1]; ";
+            }
+
             case 0x19: // multu rs,rt
             {
-                return "var res = JSMIPS.mul32(regs[" + rs + "], regs[" + rt + "]); " +
+                return "res = JSMIPS.mul32(regs[" + rs + "], regs[" + rt + "]); " +
 
                     "mips.rhi = res[0]; " +
                     "mips.rlo = res[1]; ";
@@ -1505,7 +1513,7 @@ var JSMIPS = (function(JSMIPS) {
         }
 
         if (jscode !== false) {
-            this.compiled = eval(jscode); // FIXME: Do we really need eval?
+            this.compiled = Function("mips", jscode);
         } else {
             this.compiled = false;
         }
@@ -1634,20 +1642,6 @@ var JSMIPS = (function(JSMIPS) {
     var DEBUG_STEPS = JSMIPS.DEBUG_STEPS = 4;
     var DEBUG_INSTR = JSMIPS.DEBUG_INSTR = 5;
 
-    /* BROWSER
-    // the spinner
-    var spinnerChars = "/-\\|";
-    var spinnerCur = 0;
-    function spin() {
-        spinnerCur = (spinnerCur + 1) % (spinnerChars.length);
-        document.getElementById('spinner').innerHTML = spinnerChars.slice(spinnerCur, spinnerCur+1);
-    }
-    */
-
-
-    // System calls and related
-    var PATH_MAX = 255;
-
 
     // exit(4001)
     function sys_exit(mips) {
@@ -1656,70 +1650,6 @@ var JSMIPS = (function(JSMIPS) {
     }
     syscalls[JSMIPS.NR_exit] = sys_exit;
     syscalls[JSMIPS.NR_exit_group] = sys_exit;
-
-/*  Original versions, mostly to be integrated as appropriate.
-    // getegid (43)
-    function sys_getegid(mips) {
-        mips.sysreturn(0);
-    }
-    syscalls[43] = sys_getegid;
-
-    // getgid (47)
-    function sys_getgid(mips) {
-        mips.sysreturn(0);
-    }
-    syscalls[47] = sys_getgid;
-
-    // gethostname(87)
-    function sys_gethostname(mips, nameaddr, len) {
-        var hostname = "jsmips";
-        if (hostname.length >= len) {
-            hostname = hostname.slice(0, len - 1);
-        }
-        mips.mem.setstr(nameaddr, hostname);
-        mips.sysreturn(0);
-    }
-    syscalls[87] = sys_gethostname;
-
-    // getpgid(207)
-    function sys_getpgid(mips) {
-        mips.sysreturn(0);
-    }
-    syscalls[207] = sys_getpgid;
-
-    // getsid(310)
-    function sys_getsid(mips) {
-        mips.sysreturn(0);
-    }
-    syscalls[310] = sys_getsid;
-
-    // unimpl(65537)
-    function sys_unimpl(mips, faddr) {
-        if (mips.debug >= DEBUG_UNIMPL) {
-            var f = mips.mem.getstr(faddr);
-            var o = document.getElementById("debugOut");
-            if (o != null) {
-                o.innerHTML += "Unimplemented syscall: " + f + "<br/>";
-            }
-        }
-        mips.sysreturn(0);
-    }
-    syscalls[65537] = sys_unimpl;
-
-    // sysconf(65540)
-    var _SC_PAGESIZE = 8;
-    function sys_sysconf(mips, name) {
-        switch (name) {
-            case _SC_PAGESIZE:
-                mips.sysreturn(4096);
-                break;
-
-            default:
-                mips.sysreturn(-JSMIPS.ENOTSUP);
-        }
-    }
-    syscalls[65540] = sys_sysconf;
-*/
 
     // fork(4002)
     function sys_fork(mips) {
