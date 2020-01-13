@@ -105,6 +105,7 @@ var JSMIPS = (function(JSMIPS) {
         NR_mmap2: 4210,
         NR_stat64: 4213,
         NR_lstat64: 4214,
+        NR_fstat64: 4215,
         NR_getdents64: 4219,
         NR_fcntl64: 4220,
         NR_gettid: 4222,

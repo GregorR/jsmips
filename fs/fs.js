@@ -3487,6 +3487,15 @@ function sys_lstat64(mips, pathname, statbuf) {
 }
 JSMIPS.syscalls[JSMIPS.NR_lstat64] = sys_lstat64;
 
+// fstat64(4215)
+function sys_fstat64(mips, fd, statbuf) {
+    // FIXME: Is it possible to do this better with Emscripten?
+    if (!mips.fds[fd])
+        return -JSMIPS.EBADF;
+    return multistat(mips, "stat", mips.fds[fd].stream.path, statbuf);
+}
+JSMIPS.syscalls[JSMIPS.NR_fstat64] = sys_fstat64;
+
 // getdents64(4219)
 function sys_getdents64(mips, fd, dirp, count) {
     if (!mips.fds[fd])
