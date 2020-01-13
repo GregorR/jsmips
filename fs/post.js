@@ -671,7 +671,8 @@ JSMIPS.syscalls[JSMIPS.NR_getcwd] = sys_getcwd;
  * @private
  */
 function multistat(mips, mode, pathname, statbuf) {
-    pathname = absolute(mips, mips.mem.getstr(pathname));
+    if (typeof pathname === "number")
+        pathname = absolute(mips, mips.mem.getstr(pathname));
 
     // Assert its existence
     var ub = XHRFS.assert(pathname);
@@ -695,13 +696,13 @@ function multistat(mips, mode, pathname, statbuf) {
      * 	gid_t st_gid;               uint32 36
      * 	dev_t st_rdev;              int64  40
      * 	long __st_padding2[2];             48
-     * 	off_t st_size;              int64  64
-     * 	struct timespec st_atim;    int64  72
-     * 	struct timespec st_mtim;    int64  80
-     * 	struct timespec st_ctim;    int64  88
-     * 	blksize_t st_blksize;       int32  96
-     * 	long __st_padding3;                100
-     * 	blkcnt_t st_blocks;         int64  104
+     * 	off_t st_size;              int64  56
+     * 	struct timespec st_atim;    int64  64
+     * 	struct timespec st_mtim;    int64  72
+     * 	struct timespec st_ctim;    int64  80
+     * 	blksize_t st_blksize;       int32  88
+     * 	long __st_padding3;                92
+     * 	blkcnt_t st_blocks;         int64  96
      *  long __st_padding4[14];
      * };
      */
@@ -719,18 +720,18 @@ function multistat(mips, mode, pathname, statbuf) {
     s(32, 0); // uid
     s(36, 0); // gid
     s(40, j.rdev);
-    sd(64, j.size);
+    sd(56, j.size);
     var atime = j.atime.getTime()/1000;
-    s(72, atime);
-    s(76, (atime*1000000000)%1000000000);
+    s(64, atime);
+    s(68, (atime*1000000000)%1000000000);
     var mtime = j.mtime.getTime()/1000;
-    s(80, mtime);
-    s(84, (mtime*1000000000)%1000000000);
+    s(72, mtime);
+    s(76, (mtime*1000000000)%1000000000);
     var ctime = j.ctime.getTime()/1000;
-    s(88, ctime);
-    s(92, (ctime*1000000000)%1000000000);
-    s(96, j.blksize);
-    sd(104, j.blocks);
+    s(80, ctime);
+    s(84, (ctime*1000000000)%1000000000);
+    s(88, j.blksize);
+    sd(96, j.blocks);
 
     return 0;
 }

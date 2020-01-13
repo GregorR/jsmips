@@ -32,6 +32,7 @@ var JSMIPS = (function(JSMIPS) {
 
     var toAdd = {
         // errno.h
+        EPERM: 1,
         ENOENT: 2,
         EBADF: 9,
         ECHILD: 10,
