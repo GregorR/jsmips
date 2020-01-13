@@ -96,13 +96,13 @@ JSMIPS.mipsstop.push(function(mips) {
  * get absolute paths
  */
 function absolute(mips, path) {
-    if (path.length === 0 || path[0] === "/")
-        return path;
+    if (path.length === 0)
+        return mips.cwd;
 
-    path = mips.cwd + path;
     try {
         path = FS.lookupPath(path).path;
     } catch (ex) {}
+    path = PATH.normalize(mips.cwd + path);
 
     return path;
 }
@@ -134,7 +134,11 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
             return ub;
 
         // Read the file (FIXME: Won't work if blocking is still possible)
-        file = FS.readFile(filename, {encoding: "binary"});
+        try {
+            file = FS.readFile(filename, {encoding: "binary"});
+        } catch (err) {
+            return fsErr(err);
+        }
 
         // FIXME: Script support, dynamic ELF, etc
 
@@ -289,7 +293,7 @@ JSMIPS.syscalls[JSMIPS.NR_write] = sys_write;
 JSMIPS.MIPS.prototype.open = function(pathname, flags, mode) {
     pathname = absolute(this, pathname);
 
-    var ps = FS.flagsToPermissionString(flags).replace("rw", "r+").replace("ww", "w");
+    var ps = FS.flagsToPermissionString(flags).replace("rw", "w+").replace("ww", "w");
     var stream;
 
     // Open via XHRFS to auto-download
@@ -391,6 +395,56 @@ function sys_unlink(mips, pathname) {
     return 0;
 }
 JSMIPS.syscalls[JSMIPS.NR_unlink] = sys_unlink;
+
+// access(4033)
+function sys_access(mips, pathname, mode) {
+    pathname = absolute(mips, mips.mem.getstr(pathname));
+
+    var ub = XHRFS.assert(pathname);
+    if (ub)
+        return ub;
+
+    // FIXME: If it exists, it's fine?
+    var stream;
+    try {
+        stream = FS.open(pathname, "r");
+    } catch (err) {
+        return fsErr(err);
+    }
+
+    if (stream.stream_ops.close)
+        stream.stream_ops.close(stream);
+
+    return 0;
+}
+JSMIPS.syscalls[JSMIPS.NR_access] = sys_access;
+
+/**
+ * Brilliantly, Emscripten mkdir will actually blank out a directory if you
+ * mkdir over an existing directory, so we have to do checking ourselves.
+ */
+FS.mkdir2 = function(pathname, mode) {
+    try {
+        FS.lookupPath(pathname);
+        return -JSMIPS.EEXIST;
+    } catch (err) {}
+
+    try {
+        FS.mkdir(pathname, mode);
+    } catch (err) {
+        return fsErr(err);
+    }
+
+    return 0;
+}
+
+// mkdir(4039)
+function sys_mkdir(mips, pathname, mode)
+{
+    pathname = absolute(mips, mips.mem.getstr(pathname));
+    return FS.mkdir2(pathname, mode);
+}
+JSMIPS.syscalls[JSMIPS.NR_mkdir] = sys_mkdir;
 
 /**
  * dup

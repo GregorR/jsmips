@@ -23,7 +23,7 @@ var XHRFS = {
 
     open: function(path, flags, mode) {
         // Try just opening it
-        var ret = null, err;
+        var ret = null, err = null;
         try {
             ret = FS.open(path, flags, mode);
         } catch (ex) {
@@ -79,22 +79,24 @@ var XHRFS = {
             // 1: Make the directory
             var parts = path.split("/");
             var soFar = "/";
-            for (var pi = 0; pi < parts.length - 1; pi++) {
+            for (var pi = 0; pi < parts.length - (isDirectory?0:1); pi++) {
                 var part = parts[pi];
                 if (part === "") continue;
                 soFar += part;
                 try {
-                    FS.mkdir(soFar);
+                    FS.mkdir2(soFar);
                 } catch (ex) {};
                 soFar += "/";
             }
 
-            // Then make and fill the file
-            var data = new Uint8Array(xhr.response);
-            try {
-                FS.writeFile(path, data);
-            } catch (err) {
-                return fail();
+            if (!isDirectory) {
+                // Then make and fill the file
+                var data = new Uint8Array(xhr.response);
+                try {
+                    FS.writeFile(path, data);
+                } catch (err) {
+                    return fail();
+                }
             }
 
             // And now we're ready, so unblock

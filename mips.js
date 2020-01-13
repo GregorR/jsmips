@@ -1709,6 +1709,8 @@ var JSMIPS = (function(JSMIPS) {
         return 0;
     }
     syscalls[JSMIPS.NR_getuid] = sys_getuid;
+    syscalls[JSMIPS.NR_getgid] = sys_getuid;
+    syscalls[JSMIPS.NR_getegid] = sys_getuid;
     syscalls[JSMIPS.NR_geteuid] = sys_getuid;
 
     // brk(4045)
@@ -1928,6 +1930,7 @@ var JSMIPS = (function(JSMIPS) {
     syscalls[JSMIPS.NR_rt_sigprocmask] = sys_stub;
     syscalls[JSMIPS.NR_set_tid_address] = sys_stub;
     syscalls[JSMIPS.NR_set_thread_area] = sys_stub;
+    syscalls[JSMIPS.NR_prlimit64] = sys_stub;
 
 
     // ioctls
