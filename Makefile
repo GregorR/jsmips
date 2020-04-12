@@ -12,12 +12,15 @@ JSMIPS_SRC=\
 all: dist/jsmips-base.js dist/jsmips-noweb.js dist/jsmips.js
 
 dist/jsmips-base.js: $(JSMIPS_BASE_SRC)
+	mkdir -p dist
 	cat $(JSMIPS_BASE_SRC) | $(MINIFIER) | cat license.js - > $@
 
 dist/jsmips-noweb.js: $(JSMIPS_NOWEB_SRC)
+	mkdir -p dist
 	cat $(JSMIPS_NOWEB_SRC) | $(MINIFIER) | cat license.js - > $@
 
 dist/jsmips.js: $(JSMIPS_SRC)
+	mkdir -p dist
 	cat $(JSMIPS_SRC) | $(MINIFIER) | cat license.js - > $@
 
 fs/fs.js: fs/xhrfs.js fs/post.js
