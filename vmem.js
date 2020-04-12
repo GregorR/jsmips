@@ -129,7 +129,7 @@ var JSMIPS = (function(JSMIPS) {
             var newmem = this.newPage();
             newmem.buf.set(pmem.buf);
             pmem = newmem;
-            this.memArray[page] = pmem;
+            this.memArray[page] = this.lastPageMem = pmem;
         }
     
         return [pmem, word];
