@@ -175,10 +175,6 @@ var JSMIPS = (function(JSMIPS) {
             // Pull out the operation
             var opc = this.pc;
             var opaddr = this.mem.translate(opc);
-            if (opc === 0x436ef4) {
-                this.stop();
-                return;
-            }
 
             // Figure out if it's been jitted or precompiled
             if (!step && this.debug < DEBUG_NOJIT && this.npc === this.pc + 4) {
@@ -881,7 +877,7 @@ var JSMIPS = (function(JSMIPS) {
      */
     MIPS.prototype.jitone = function(opc, op) {
         // Now get the opcode
-        if (op == undefined) var op = this.mem.get(opc);
+        if (typeof op === "undefined") op = this.mem.get(opc);
         var opcode = (op & 0xFC000000) >>> 26;
 
         if (opcode == 0x00) {
