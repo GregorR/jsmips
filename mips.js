@@ -1109,7 +1109,7 @@ var JSMIPS = (function(JSMIPS) {
             if (res === false) {
                 res = "regs[31] = " + (opc+8) + "; mips.pc = " + (opc+4) + "; mips.npc = " + target + "; return false; ";
             } else {
-                res = "regs[31] = " + (opc+8) + "; " + res + " mips.pc = " + target + "; mips.npc = " + (target+4) + "; if ((++bc) > 100) return true; else break;";
+                res += "regs[31] = " + (opc+8) + "; mips.pc = " + target + "; mips.npc = " + (target+4) + "; if ((++bc) > 100) return true; else break;";
             }
 
             return res;
@@ -1146,7 +1146,7 @@ var JSMIPS = (function(JSMIPS) {
                 // whoops, can't handle this case
                 res = (link||"") + "mips.pc = " + (opc+4) + "; mips.npc = " + trg + "; return false; ";
             } else {
-                res = (link||"") + res + "mips.pc = " + trg + "; mips.npc = " + (trg + 4) + "; if ((++bc) > 100) return true; else break; ";
+                res += (link||"") + "mips.pc = " + trg + "; mips.npc = " + (trg + 4) + "; if ((++bc) > 100) return true; else break; ";
             }
             return res;
         }
@@ -1637,6 +1637,14 @@ var JSMIPS = (function(JSMIPS) {
     var DEBUG_JUMPS = JSMIPS.DEBUG_JUMPS = 3;
     var DEBUG_STEPS = JSMIPS.DEBUG_STEPS = 4;
     var DEBUG_INSTR = JSMIPS.DEBUG_INSTR = 5;
+
+
+    // debug(1) (our own fake syscall)
+    function sys_debug(mips, a) {
+        console.log("DEBUG: " + a.toString(16));
+        return 0;
+    }
+    syscalls[1] = sys_debug;
 
 
     // exit(4001)
