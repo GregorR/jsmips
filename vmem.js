@@ -138,29 +138,36 @@ var JSMIPS = (function(JSMIPS) {
     /**
      * Find a fresh chunk of memory of the given length (in pages!), for mmap
      * @param {int} len         Number of contiguous pages to allocate
+     * @param {int?} loc        Location to map it
      * @return {(int|null)}     The base address of the allocated memory, if
      *                          successful. null if unsuccessful.
      */
-    VMem.prototype.mmap = function(len) {
+    VMem.prototype.mmap = function(len, loc) {
         var start, end;
-        for (start = 0x60000; start < 0x100000; start++) {
-            if (start in this.memArray)
-                continue;
 
-            // This page is free, but is the region?
-            for (end = start + 1; end < start + len; end++) {
-                if (end in this.memArray)
+        if (typeof loc !== "undefined") {
+            start = loc;
+            end = start + len;
+
+        } else {
+            for (start = 0x60000; start < 0x100000; start++) {
+                // Check if the region is free
+                for (end = start; end < start + len; end++) {
+                    if (end in this.memArray)
+                        break;
+                }
+                if (end === start + len)
                     break;
             }
-            if (end !== start + len)
-                continue;
+            if (start === 0x100000)
+                return null;
 
-            // The whole region is free, hooray
-            for (end--; end >= start; end--)
-                this.memArray[end] = this.newPage();
-            return (start << 12)>>>0;
         }
-        return null;
+
+        // The whole region is free, so allocate it
+        for (end--; end >= start; end--)
+            this.memArray[end] = this.newPage();
+        return (start << 12)>>>0;
     }
 
     /**

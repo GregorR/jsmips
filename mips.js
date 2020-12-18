@@ -105,6 +105,16 @@ var JSMIPS = (function(JSMIPS) {
         this.npc = 4;
 
         /**
+         * Thread area. We don't *really* support threads, but this is needed
+         * for ld.so.
+         *
+         * @private
+         * @type {int}
+         */
+        this.threadArea = 0;
+
+
+        /**
          * Memory for this process.
          *
          * @type {JSMIPS.VMem}
@@ -313,7 +323,7 @@ var JSMIPS = (function(JSMIPS) {
             {
                 this.npc = this.regs[rs];
                 if (this.debug >= DEBUG_JUMPS)
-                    mipsDebugOut("JUMP " + this.npc.toString(16) + "\n");
+                    mipsDebugOut("JUMP " + this.pc.toString(16) + " -> " + this.npc.toString(16) + "\n");
                 break;
             }
 
@@ -322,7 +332,7 @@ var JSMIPS = (function(JSMIPS) {
                 this.regs[rd] = this.pc + 4;
                 this.npc = this.regs[rs];
                 if (this.debug >= DEBUG_JUMPS)
-                    mipsDebugOut("JUMP " + this.npc.toString(16) + "\n");
+                    mipsDebugOut("JUMP " + this.pc.toString(16) + " -> " + this.npc.toString(16) + "\n");
                 break;
             }
 
@@ -527,7 +537,7 @@ var JSMIPS = (function(JSMIPS) {
                 thismips.regs[31] = link;
             thismips.npc += (simm << 2) - 4;
             if (thismips.debug >= DEBUG_JUMPS)
-                mipsDebugOut("BRANCH " + thismips.npc.toString(16) + "\n");
+                mipsDebugOut("BRANCH " + thismips.pc.toString(16) + " -> " + thismips.npc.toString(16) + "\n");
         }
 
         switch (opcode) {
@@ -631,7 +641,7 @@ var JSMIPS = (function(JSMIPS) {
                 /* Used for thread-related stuff. We have no threads, so just
                  * do some nonsense and tell it that our pthread is stored at
                  * NULL, since nobody else is using NULL :) */
-                this.regs[3] = 0;
+                this.regs[3] = this.threadArea;
                 break;
             }
 
@@ -804,7 +814,7 @@ var JSMIPS = (function(JSMIPS) {
         var target = ((opc + 4) & 0xF0000000) | (targ << 2);
 
         if (this.debug >= DEBUG_JUMPS)
-            mipsDebugOut("JUMP " + target.toString(16) + "\n");
+            mipsDebugOut("JUMP " + this.pc.toString(16) + " -> " + target.toString(16) + "\n");
 
         if (opcode == 0x02) { // j target
             this.npc = target;
@@ -1239,7 +1249,7 @@ var JSMIPS = (function(JSMIPS) {
             case 0x1F: // secret instruction
             {
                 // See 0x1F in itype
-                return "regs[3] = 0; ";
+                return "regs[3] = mips.threadArea; ";
             }
 
             case 0x20: // lb rt,imm(rs)
@@ -1437,7 +1447,10 @@ var JSMIPS = (function(JSMIPS) {
      * @param {Uint32Array} elf The ELF file
      */
     // load an ELF into memory
-    MIPS.prototype.loadELF = function(elf) {
+    MIPS.prototype.loadELF = function(elf, opts) {
+        opts = opts || {};
+        var aux = opts.aux || [];
+
         this.mem = new JSMIPS.VMem();
         this.dataend = 0x01000000;
         this.jitted = [];
@@ -1450,6 +1463,9 @@ var JSMIPS = (function(JSMIPS) {
         var e_shentsize = (elf[11] & 0x0000FFFF) >>> 2;
         var e_shnum = (elf[12] & 0xFFFF0000) >>> 16;
         var e_shstrndx = (elf[12] & 0x0000FFFF);
+
+        // musl ld.so uses AT_PHDR to determine what's loaded
+        aux.push([3 /* AT_PHDR */, e_phoff << 2]);
 
         // go through each program header
         if (e_phoff > 0) {
@@ -1468,7 +1484,6 @@ var JSMIPS = (function(JSMIPS) {
                     var addr = p_vaddr;
                     for (var i = p_offset; i < p_offset + p_filesz; i++) {
                         this.mem.set(addr, elf[i]);
-
                         addr += 4;
                     }
 
@@ -1880,24 +1895,22 @@ var JSMIPS = (function(JSMIPS) {
 
     // mmap2(4210)
     function sys_mmap2(mips, addr, length, prot) {
-        var flags = mips.regs[7];
         var fd = mips.regs[8]>>0;
-        var pgoffset = mips.regs[9];
 
         if (fd >= 0) {
             // What, you wanted to map a /file/???
             return -JSMIPS.ENOTSUP;
         }
 
-        // FIXME: This is not an even remotely correct implementation of mmap!
+        // This mmap only supports anonymous mapping
         length >>>= 12;
-        var ret = mips.mem.mmap(length);
+        var ret = mips.mem.mmap(length, addr ? (addr>>>12) : void 0);
         if (ret === null)
             return -JSMIPS.ENOMEM;
 
         return ret;
     }
-    syscalls[JSMIPS.NR_mmap2] = sys_mmap2;
+    JSMIPS.sys_mmap2 = syscalls[JSMIPS.NR_mmap2] = sys_mmap2;
 
     // fcntl64(4220)
     function sys_fcntl64(mips, fd, cmd, a) {
@@ -1925,6 +1938,13 @@ var JSMIPS = (function(JSMIPS) {
     }
     syscalls[JSMIPS.NR_clock_gettime] = sys_clock_gettime;
 
+    // set_thread_area(4283)
+    function sys_set_thread_area(mips, to) {
+        mips.threadArea = to;
+        return 0;
+    }
+    syscalls[JSMIPS.NR_set_thread_area] = sys_set_thread_area;
+
     // stubs
     function sys_stub() {
         return 0;
@@ -1933,7 +1953,6 @@ var JSMIPS = (function(JSMIPS) {
     syscalls[JSMIPS.NR_rt_sigaction] = sys_stub;
     syscalls[JSMIPS.NR_rt_sigprocmask] = sys_stub;
     syscalls[JSMIPS.NR_set_tid_address] = sys_stub;
-    syscalls[JSMIPS.NR_set_thread_area] = sys_stub;
     syscalls[JSMIPS.NR_prlimit64] = sys_stub;
 
 

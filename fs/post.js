@@ -167,7 +167,8 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
     }
 
     // Load the ELF
-    this.loadELF(file);
+    var aux = [[AT_PAGESZ, 4096]];
+    this.loadELF(file, {aux: aux});
 
     // Load out args and envs
     var topaddr = 0xFFFFFFFC;
@@ -187,11 +188,14 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
     }
 
     // Put the aux on the stack
-    topaddr = 0xC0000000 - 4;
+    topaddr = this.regs[29] - 4;
     this.mem.set(topaddr, 0);
-    topaddr -= 8;
-    this.mem.set(topaddr, AT_PAGESZ);
-    this.mem.set(topaddr+4, 4096);
+    for (var ai = 0; ai < aux.length; ai++) {
+        var auxp = aux[ai];
+        topaddr -= 8;
+        this.mem.set(topaddr, auxp[0]);
+        this.mem.set(topaddr+4, auxp[1]);
+    }
 
     // And put the references to them on the stack
     topaddr -= 4;
@@ -665,6 +669,44 @@ function sys_getcwd(mips, buf, size) {
     return buf;
 }
 JSMIPS.syscalls[JSMIPS.NR_getcwd] = sys_getcwd;
+
+// mmap2(4210)
+function sys_mmap2_fs(mips, addr, length, prot) {
+    // This overrides the builtin mmap, which only supports anonymous maps
+    var fd = mips.regs[8]>>0;
+    if (fd < 0)
+        return JSMIPS.sys_mmap2(mips, addr, length, prot);
+
+    var offset = mips.regs[9] << 12;
+
+    /* OK, they are actually asking to map a file. We don't *actually* support
+     * mapping files, just copying files into mapped location */
+    if (!mips.fds[fd])
+        return -JSMIPS.EBADF;
+    var stream = mips.fds[fd].stream;
+
+    // Read into an internal buffer
+    var rbuf = new Uint8Array(length);
+    var rd = stream.stream_ops.read(stream, rbuf, 0, length, offset);
+    if (typeof rd === "object") {
+        // Block
+        return rd;
+    }
+
+    // Get the memory
+    mips.regs[8] = -1;
+    var ret = JSMIPS.sys_mmap2(mips, addr, length, prot);
+    mips.regs[8] = fd;
+    if (ret < 0)
+        return ret;
+
+    // Then convert to JSMIPS memory
+    for (var i = 0; i < rd; i++)
+        mips.mem.setb(ret + i, rbuf[i]);
+
+    return ret;
+}
+JSMIPS.syscalls[JSMIPS.NR_mmap2] = sys_mmap2_fs;
 
 /**
  * Generic frontend for stat and lstat
