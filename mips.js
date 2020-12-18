@@ -267,6 +267,18 @@ var JSMIPS = (function(JSMIPS) {
     }
 
     /**
+     * Run the MIPS machine, with a promise when it finishes
+     */
+    MIPS.prototype.runPromise = function() {
+        var mips = this;
+        var ret = new Promise(function(res) {
+            mips.onstop.push(res);
+        });
+        this.run();
+        return ret;
+    },
+
+    /**
      * Run a single r-type instruction
      * @private
      * @param {int} opc         The opcode program counter

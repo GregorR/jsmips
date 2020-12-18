@@ -2728,6 +2728,15 @@ var XHRFS = {
         return null;
     },
 
+    assertPromise: function(pathname) {
+        var ub = this.assert(pathname);
+        if (!ub)
+            return Promise.resolve(null);
+        return new Promise(function(res) {
+            ub.unblock = res;
+        });
+    },
+
     mount: function(source, target) {
         if (!/\/$/.test(source))
             source += "/";
