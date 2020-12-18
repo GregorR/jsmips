@@ -126,8 +126,9 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
     // The only AUX we currently support is PAGESZ
     var AT_PAGESZ = 6;
 
-    var file;
-    if (typeof filename === "string") {
+    function elfRead(filename) {
+        var file;
+
         // Assert that it exists, in case of xhr
         var ub = XHRFS.assert(filename);
         if (ub)
@@ -140,8 +141,6 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
             return fsErr(err);
         }
 
-        // FIXME: Script support, dynamic ELF, etc
-
         // Convert to 32-bit for loadELF
         if (file.length % 4 !== 0) {
             var file4 = new Uint8Array(file.length + 4 - file.length%4);
@@ -153,6 +152,15 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
         for (var i = 0; i < file32.length; i++)
             file32[i] = filedv.getUint32(i*4);
         file = file32;
+
+        return file;
+    }
+
+    var file;
+    if (typeof filename === "string") {
+        file = elfRead(filename);
+        if (!file.buffer)
+            return file;
 
     } else {
         // You're allowed to include the ELF directly
@@ -168,7 +176,16 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
 
     // Load the ELF
     var aux = [[AT_PAGESZ, 4096]];
-    this.loadELF(file, {aux: aux});
+    var opts = {aux: aux};
+    this.loadELF(file, opts);
+
+    // Perhaps load the interpreter
+    if (opts.interp) {
+        var interp = elfRead("/usr/lib/libc.so" /*opts.interp*/);
+        if (!interp.buffer)
+            return interp;
+        this.loadELF(interp, {keepMem: true});
+    }
 
     // Load out args and envs
     var topaddr = 0xFFFFFFFC;
@@ -197,7 +214,7 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
         this.mem.set(topaddr+4, auxp[1]);
     }
 
-    // And put the references to them on the stack
+    // And put the references to the arg and env
     topaddr -= 4;
     this.mem.set(topaddr, 0);
     for (i = envs.length - 1; i >= 0; i--) {

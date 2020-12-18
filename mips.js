@@ -1451,8 +1451,10 @@ var JSMIPS = (function(JSMIPS) {
         opts = opts || {};
         var aux = opts.aux || [];
 
-        this.mem = new JSMIPS.VMem();
-        this.dataend = 0x01000000;
+        if (!opts.keepMem) {
+            this.mem = new JSMIPS.VMem();
+            this.dataend = 0x01000000;
+        }
         this.jitted = [];
 
         // get important bits out of the header
@@ -1464,21 +1466,29 @@ var JSMIPS = (function(JSMIPS) {
         var e_shnum = (elf[12] & 0xFFFF0000) >>> 16;
         var e_shstrndx = (elf[12] & 0x0000FFFF);
 
-        // musl ld.so uses AT_PHDR to determine what's loaded
-        aux.push([3 /* AT_PHDR */, e_phoff << 2]);
-
         // go through each program header
         if (e_phoff > 0) {
             var curphoff = e_phoff - e_phentsize;
             for (var onph = 0; onph < e_phnum; onph++) {
                 curphoff += e_phentsize;
 
-                // if this is type PT_LOAD (1), load it in
-                if (elf[curphoff] === 1) {
+                var p_type = elf[curphoff];
+
+                /* If this is type PT_LOAD (1), load it in. We also do
+                 * PT_INTERP here, simply because it's easier handled here than
+                 * anywhere else */
+                if (p_type === 1 || p_type === 3) {
                     // get the vital parts out of this header
                     var p_offset = elf[curphoff + 1] >>> 2;
                     var p_vaddr = elf[curphoff + 2];
                     var p_filesz = elf[curphoff + 4] >>> 2;
+
+                    if (p_offset === 0) {
+                        // We're about to load the program headers
+                        aux.push([3 /* AT_PHDR */, p_vaddr + e_phoff << 2]);
+                        aux.push([4 /* AT_PHENT */, e_phentsize << 2]);
+                        aux.push([5 /* AT_PHNUM */, e_phnum]);
+                    }
 
                     // and load it in
                     var addr = p_vaddr;
@@ -1487,8 +1497,20 @@ var JSMIPS = (function(JSMIPS) {
                         addr += 4;
                     }
 
+                    if (p_type === 3) {
+                        // PT_INTERP. Get the string value. FIXME: UTF-8 maybe?
+                        var s = "";
+                        p_filesz = elf[curphoff + 4];
+                        for (var i = 0; i < p_filesz; i++) {
+                            var c = this.mem.getb(p_vaddr + i);
+                            if (!c) break;
+                            s += String.fromCharCode(c);
+                        }
+                        opts.interp = s;
+                    }
+
                 // And if it's PT_MIPS_REGINFO, load gp
-                } else if (elf[curphoff] === 0x70000000) {
+                } else if (p_type === 0x70000000) {
                     var p_offset = elf[curphoff + 1] >>> 2;
                     this.regs[28] = elf[p_offset + 5];
 
@@ -1499,6 +1521,7 @@ var JSMIPS = (function(JSMIPS) {
         // now set ip appropriately
         this.pc = elf[6];
         this.npc = this.pc + 4;
+        aux.push([9 /* AT_ENTRY */, elf[6]]);
 
         // and start the stack
         this.regs[29] = 0xC0000000;
