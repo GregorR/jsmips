@@ -1,4 +1,4 @@
-MINIFIER=closure-compiler --language_in ECMASCRIPT5
+MINIFIER=./node_modules/.bin/minify --js
 
 JSMIPS_BASE_SRC=\
 	nomath.js vmem.js consts.js mips.js
@@ -25,3 +25,6 @@ dist/jsmips.js: $(JSMIPS_SRC)
 
 fs/fs.js: fs/xhrfs.js fs/post.js
 	cd fs ; $(MAKE)
+
+clean:
+	rm -rf dist
