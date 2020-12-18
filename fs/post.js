@@ -123,8 +123,9 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
     if (typeof args === "undefined") args = [filename];
     if (typeof envs === "undefined") envs = [];
 
-    // The only AUX we currently support is PAGESZ
-    var AT_PAGESZ = 6;
+    // The only AUXes we directly support
+    var AT_PAGESZ = 6,
+        AT_BASE = 7;
 
     function elfRead(filename) {
         var file;
@@ -184,7 +185,9 @@ JSMIPS.MIPS.prototype.execve = function(filename, args, envs) {
         var interp = elfRead("/usr/lib/libc.so" /*opts.interp*/);
         if (!interp.buffer)
             return interp;
-        this.loadELF(interp, {keepMem: true});
+        var iopts = {keepMem: true};
+        this.loadELF(interp, iopts);
+        aux.push([AT_BASE, iopts.offset]);
     }
 
     // Load out args and envs
@@ -923,6 +926,7 @@ function sys_sendfile64(mips, out_fd, in_fd, offset) {
     return wr;
 }
 JSMIPS.syscalls[JSMIPS.NR_sendfile64] = sys_sendfile64;
+
 
 // fcntls
 

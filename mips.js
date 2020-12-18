@@ -1469,6 +1469,9 @@ var JSMIPS = (function(JSMIPS) {
         }
         this.jitted = [];
 
+        // Global offset, as the loader is unhappy if we load it at null
+        var offset = 0;
+
         // get important bits out of the header
         var e_phoff = elf[7] >>> 2;
         var e_shoff = elf[8] >>> 2;
@@ -1486,57 +1489,80 @@ var JSMIPS = (function(JSMIPS) {
 
                 var p_type = elf[curphoff];
 
-                /* If this is type PT_LOAD (1), load it in. We also do
-                 * PT_INTERP here, simply because it's easier handled here than
-                 * anywhere else */
-                if (p_type === 1 || p_type === 3) {
-                    // get the vital parts out of this header
-                    var p_offset = elf[curphoff + 1] >>> 2;
-                    var p_vaddr = elf[curphoff + 2];
-                    var p_filesz = elf[curphoff + 4] >>> 2;
+                switch (p_type) {
+                    /* If this is type PT_LOAD (1), load it in. We also do
+                     * PT_INTERP here, simply because it's easier handled here than
+                     * anywhere else */
+                    case 1: // PT_LOAD
+                    case 3: // PT_INTERP
+                        // get the vital parts out of this header
+                        var p_offset = elf[curphoff + 1] >>> 2;
+                        var p_vaddr = elf[curphoff + 2];
+                        var p_filesz = elf[curphoff + 4] >>> 2;
 
-                    if (p_offset === 0) {
-                        // We're about to load the program headers
-                        aux.push([3 /* AT_PHDR */, p_vaddr + e_phoff << 2]);
-                        aux.push([4 /* AT_PHENT */, e_phentsize << 2]);
-                        aux.push([5 /* AT_PHNUM */, e_phnum]);
-                    }
+                        // Perhaps offset
+                        if (p_vaddr === 0)
+                            offset = 4096;
+                        p_vaddr += offset;
 
-                    // and load it in
-                    var addr = p_vaddr;
-                    for (var i = p_offset; i < p_offset + p_filesz; i++) {
-                        this.mem.set(addr, elf[i]);
-                        addr += 4;
-                    }
-
-                    if (p_type === 3) {
-                        // PT_INTERP. Get the string value. FIXME: UTF-8 maybe?
-                        var s = "";
-                        p_filesz = elf[curphoff + 4];
-                        for (var i = 0; i < p_filesz; i++) {
-                            var c = this.mem.getb(p_vaddr + i);
-                            if (!c) break;
-                            s += String.fromCharCode(c);
+                        if (p_offset === 0) {
+                            // Report the program header in aux
+                            aux.push([3 /* AT_PHDR */, p_vaddr + (e_phoff << 2)]);
+                            aux.push([4 /* AT_PHENT */, e_phentsize << 2]);
+                            aux.push([5 /* AT_PHNUM */, e_phnum]);
                         }
-                        opts.interp = s;
-                    }
 
-                // And if it's PT_MIPS_REGINFO, load gp
-                } else if (p_type === 0x70000000) {
-                    var p_offset = elf[curphoff + 1] >>> 2;
-                    this.regs[28] = elf[p_offset + 5];
+                        // and load it in
+                        var addr = p_vaddr;
+                        for (var i = p_offset; i < p_offset + p_filesz; i++) {
+                            this.mem.set(addr, elf[i]);
+                            addr += 4;
+                        }
+
+                        if (p_type === 3) {
+                            // PT_INTERP. Get the string value. FIXME: UTF-8 maybe?
+                            var s = "";
+                            p_filesz = elf[curphoff + 4];
+                            for (var i = 0; i < p_filesz; i++) {
+                                var c = this.mem.getb(p_vaddr + i);
+                                if (!c) break;
+                                s += String.fromCharCode(c);
+                            }
+                            opts.interp = s;
+                        }
+                        break;
+
+                    // If it's PT_MIPS_REGINFO, load gp
+                    case 0x70000000:
+                        var p_offset = elf[curphoff + 1] >>> 2;
+                        this.regs[28] = elf[p_offset + 5] + offset;
+                        break;
+
+                    case 0: // PT_NULL
+                    case 2: // PT_DYNAMIC
+                    case 6: // PT_PHDR
+                    case 0x70000003: // ???
+                    case 0x6474e550: // PT_GNU_EH_FRAME
+                    case 0x6474e551: // PT_GNU_STACK
+                        break;
+
+                    default:
+                        mipsDebugOut("Unsupported program segment " + p_type.toString(16));
 
                 }
             }
         }
 
         // now set ip appropriately
-        this.pc = elf[6];
+        this.pc = elf[6] + offset;
         this.npc = this.pc + 4;
-        aux.push([9 /* AT_ENTRY */, elf[6]]);
+        aux.push([9 /* AT_ENTRY */, this.pc]);
 
         // and start the stack
         this.regs[29] = 0xC0000000;
+
+        // inform the caller of our offset
+        opts.offset = offset;
 
         // find the string table
         var curshoff = e_shoff + (e_shentsize * e_shstrndx);
