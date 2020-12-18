@@ -13,17 +13,21 @@
     </head>
     <body>
         <script type="text/javascript">(function() {
-            var m = new JSMIPS.MIPS();
-            m.debug = JSMIPS.mipsDEBUG_NOJIT;
-            m.loadELF(JSON.parse(window.prompt("ELF file")));
-
+            // Make the terminal
             var termBox = document.createElement("div");
             document.body.appendChild(termBox);
             var term = new Terminal();
             term.open(termBox);
-            m.xterm(term);
 
-            m.run();
+            JSMIPS.setUpRoot().then(function() {
+                // Run a shell
+                var m = new JSMIPS.MIPS();
+                m.execve("/bin/sh", ["/bin/sh", "-i"], ["PATH=/bin:/usr/bin"]);
+                //m.execve("/usr/lib/libc.so", ["/usr/lib/libc.so"], ["PATH=/bin:/usr/bin"]);
+                m.xterm(term);
+                return m.runPromise();
+
+            });
         })();
         </script>
     </body>

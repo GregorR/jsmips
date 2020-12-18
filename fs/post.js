@@ -942,5 +942,49 @@ JSMIPS.fcntls[JSMIPS.F_DUPFD_CLOEXEC] = function(mips, fd, cmd, min) {
     return ret;
 };
 
+
+// convenience wrapper for a standard root
+JSMIPS.setUpRoot = function(opts) {
+    opts = opts || {};
+
+    // Figure out the XHRFS URL
+    var url = opts.url;
+    if (!url) {
+        var burl = new URL(document.location);
+        burl.pathname = burl.pathname.replace(/\/[^\/]*$/, "/root/usr/");
+        burl.search = "";
+        url = burl.toString();
+    }
+
+    // Mount XHRFS
+    JSMIPS.XHRFS.mount(url, "/usr/");
+
+    return Promise.all([]).then(function() {
+        // Get busybox and libc
+        return Promise.all([
+            JSMIPS.XHRFS.assertPromise("/usr/bin/busybox"),
+            JSMIPS.XHRFS.assertPromise("/usr/lib/libc.so")
+        ]);
+
+    }).then(function() {
+        // Set up the directory structure
+        ["/bin", "/sbin", "/usr/sbin", "/lib"].forEach(function(d) {
+            JSMIPS.FS.mkdir(d);
+        });
+
+        // Set up busybox links
+        var m = new JSMIPS.MIPS();
+        m.execve("/usr/lib/libc.so", ["/usr/lib/libc.so", "/usr/bin/busybox", "--install", "-s"]);
+        return m.runPromise();
+
+    }).then(function() {
+        // Set up the ld.so link
+        var m = new JSMIPS.MIPS();
+        m.execve("/usr/lib/libc.so", ["/usr/lib/libc.so", "/usr/bin/busybox", "ln", "-s", "/usr/lib/libc.so", "/lib/ld-musl-mips-sf.so.1"]);
+        return m.runPromise();
+
+    });
+};
+
 return JSMIPS;
 })(typeof JSMIPS === "undefined" ? {} : JSMIPS);
