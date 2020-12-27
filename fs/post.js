@@ -983,6 +983,12 @@ JSMIPS.setUpRoot = function(opts) {
         m.execve("/usr/lib/libc.so", ["/usr/lib/libc.so", "/usr/bin/busybox", "ln", "-s", "/usr/lib/libc.so", "/lib/ld-musl-mips-sf.so.1"]);
         return m.runPromise();
 
+    }).then(function() {
+        // And the ldd link
+        var m = new JSMIPS.MIPS();
+        m.execve("/bin/ln", ["ln", "-s", "/usr/lib/libc.so", "/usr/bin/ldd"]);
+        return m.runPromise();
+
     });
 };
 
