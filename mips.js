@@ -2006,6 +2006,12 @@ var JSMIPS = (function(JSMIPS) {
     }
     syscalls[JSMIPS.NR_set_thread_area] = sys_set_thread_area;
 
+    // pipe2 is ENOTSUP, so the wrapper will just go to pipe
+    function sys_pipe2() {
+        return -JSMIPS.ENOTSUP;
+    }
+    syscalls[JSMIPS.NR_pipe2] = sys_pipe2;
+
     // stubs
     function sys_stub() {
         return 0;

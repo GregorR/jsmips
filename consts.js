@@ -115,6 +115,7 @@ var JSMIPS = (function(JSMIPS) {
         NR_clock_gettime: 4263,
         NR_set_thread_area: 4283,
         NR_exit_group: 4246,
+        NR_pipe2: 4328,
         NR_prlimit64: 4338,
 
         // sys/stat.h
