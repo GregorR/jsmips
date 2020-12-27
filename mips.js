@@ -443,7 +443,7 @@ var JSMIPS = (function(JSMIPS) {
 
             case 0x1A: // div rs,rt
             {
-                var srs = (this.regs[rs])>>0, rt = (this.regs[rt])>>0;
+                var srs = (this.regs[rs])>>0, srt = (this.regs[rt])>>0;
                 this.rlo = Math.floor(srs/srt);
                 this.rhi = srs % srt;
                 break;
