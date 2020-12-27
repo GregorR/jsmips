@@ -1537,18 +1537,6 @@ var JSMIPS = (function(JSMIPS) {
                         var p_offset = elf[curphoff + 1] >>> 2;
                         this.regs[28] = elf[p_offset + 5] + offset;
                         break;
-
-                    case 0: // PT_NULL
-                    case 2: // PT_DYNAMIC
-                    case 6: // PT_PHDR
-                    case 0x70000003: // ???
-                    case 0x6474e550: // PT_GNU_EH_FRAME
-                    case 0x6474e551: // PT_GNU_STACK
-                        break;
-
-                    default:
-                        mipsDebugOut("Unsupported program segment " + p_type.toString(16));
-
                 }
             }
         }
